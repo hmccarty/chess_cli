@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"io"
 	"log"
 	"fmt"
@@ -71,20 +70,12 @@ func getJSONStream(client *oauth2ns.AuthorizedClient, url string, target interfa
 	resp, err := client.Get(url)
 	if err != nil {
 		log.Fatal(err)
-		return
 	}
 	defer resp.Body.Close()
 	fmt.Println("First")
-
-	bytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-
-	//dec := json.NewDecoder(resp.Body)
+	dec := json.NewDecoder(resp.Body)
 	for {
-		err := json.Unmarshal(bytes, target)
+		err := dec.Decode(target)
 		if err != nil {
 			if err == io.EOF {
 		 		break
@@ -95,7 +86,7 @@ func getJSONStream(client *oauth2ns.AuthorizedClient, url string, target interfa
 		t, ok := target.(*Event)
 		fmt.Println("Third")
 		if ok {
-			fmt.Println("Fifth")
+			fmt.Println("Fourth")
 			if t.Type == "gameStart" {
 				break
 			}
