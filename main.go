@@ -2,20 +2,61 @@ package main
 
 import (
 	"io"
+	"bufio"
 	"log"
 	"fmt"
+	//"sync"
 	"strings"
-	// "os"
+	"os"
 	"encoding/json"
 
 	"github.com/fatih/color"
 	"github.com/nmrshll/oauth2-noserver"
-	// "golang.org/x/oauth2"
+	"golang.org/x/oauth2"
 )
+
+type User struct {
+	ID string `json:"id"`
+	Username string `json:"username"`
+	Title string `json:"title"`
+}
 
 type EventResp struct {
 	Type string `json:"type"`
+	Challenge ChallengeResp `json:"challenge,omitempty"`
 	Game GameResp `json:"game,omitempty"`
+}
+
+type ChallengeResp struct {
+	ID string `json:"id"`
+	Status string `json:"created"`
+	Challenger Challenger `json:"challenger"`
+	Variant Variant `json:"variant"`
+}
+
+type Challenger struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+	Title string `json:"title"`
+	Rating int `json:"rating"`
+	Patron bool `json:"patron"`
+	Online bool `json:"online"`
+	Lag int `json:"lag"`
+}
+
+type Variant struct {
+	Key string `json:"key"`
+	Name string `json:"name"`
+	Short string `json:"short"`
+}
+
+type GameReq struct {
+	rated bool
+	time int
+	increment int
+	variant string
+	color string
+	ratingRange string
 }
 
 type GameResp struct {
@@ -25,14 +66,29 @@ type GameResp struct {
 type BoardResp struct {
 	Type string `json:"type"`
 	Moves string `json:"moves,omitempty"`
-	Status string `json:"resign,omitempty"`
+	Status string `json:"status,omitempty"`
+	White WhiteSide `json:"white,omitempty"`
+	Black BlackSide `json:"black,omitempty"`
+	Winner string `json:"winner,omitempty"`
+}
+
+type WhiteSide struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
+}
+
+type BlackSide struct {
+	ID string `json:"id"`
+	Name string `json:"name"`
 }
 
 type Game struct {
+	ID string
 	userWhite bool
 	board [8][8]byte
 	moves *Move
 	numMoves int
+	usersTurn bool
 }
 
 type Move struct {
@@ -41,9 +97,13 @@ type Move struct {
 }
 
 const lichessURL = "https://lichess.org"
+const accountPath = "/api/account"
 const streamEventPath = "/api/stream/event"
 const seekPath = "/api/board/seek"
 const streamBoardPath = "/api/board/game/stream/"
+const challengePath = "/api/challenge/"
+const gamePath = "/api/board/game/"
+const movePath = "/move/"
 
 const WHITE = 0x00
 const BLACK = 0x80
@@ -87,15 +147,47 @@ func main() {
 		log.Fatal(err)
 	}
 	
-	event := new(EventResp)
-	getJSONStream(client, lichessURL + streamEventPath, event)
-	board := new(BoardResp)
-	getJSONStream(client, lichessURL + streamBoardPath + (event.Game.ID), board)
-	game := Game{userWhite : true}
-	game.board = createBoard(game.userWhite)
-	printBoard(game.board)
-	updateMoveList(&game, "e2e4 c7c5 f2f4 d7d6 g1f3 b8c6 f1c4 g8f6 d2d3 g7g6 e1g1 f8g7")
-	printBoard(game.board)
+	user := getUser(client)
+	event := waitForGame(client)
+	game := Game{ID : event.Game.ID}
+
+	ch := make(chan BoardResp)
+	go watchForGameUpdates(client, event.Game.ID, ch)
+
+	for {
+		boardResp := <- ch
+
+		switch boardResp.Type {
+			case "gameFull":
+				if boardResp.White.ID == user.ID {
+					game.userWhite = true
+				} else {
+					game.userWhite = false
+				}
+				game.usersTurn = true
+				game.board = createBoard(game.userWhite)
+				printBoard(game.board, game.userWhite)
+			case "gameState":
+				switch boardResp.Status {
+					case "aborted", "resign", "timeout", "mate", "nostart":
+						printFooter(boardResp.Winner + " wins!")
+						break
+					case "stalemate":
+						printFooter("Stalemate!")
+						break
+					default:
+						updateMoveList(&game, boardResp.Moves)
+						printHeader(game.numMoves)
+						printBoard(game.board, game.userWhite)
+						game.usersTurn = !game.usersTurn
+				}
+			case "chatLine":
+		}
+
+		if game.usersTurn {
+			promptAction(client, game.ID)
+		}
+	}
 }
 
 func createBackRank(c byte) [8]byte {
@@ -136,40 +228,72 @@ func createBoard(isWhite bool) [8][8]byte {
 	return board
 }
 
-func printBoard(board [8][8]byte) {
-	for i := 0; i < 8; i++ {
-		fmt.Printf("%d  ", 8 - i)
-		for j := 0; j < 8; j++ {
-			if (board[i][j] == 0) {
-				color.Unset()
-			} else if (0xF0 & board[i][j] == WHITE) {
-				color.Set(color.FgBlue)
-			} else if (0xF0 & board[i][j] == BLACK) {
-				color.Set(color.FgRed)
-			}
-			fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
-		}
-		color.Unset()
-		fmt.Println()
+func printHeader(moveNum int) {
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
+	
+	var turnLabel string
+	if (moveNum % 2) == 0 {
+		turnLabel = "White"
+	} else {
+		turnLabel = "Black"
 	}
-	fmt.Println("   A  B  C  D  E  F  G  H ")
+
+	fmt.Printf("Move #%d, %s's turn\n", moveNum, turnLabel)
+}
+
+func printFooter(result string) {
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
+
+	fmt.Printf("%s\n", result)
+}
+
+
+
+func printBoard(board [8][8]byte, isUserWhite bool) {
+	if isUserWhite {
+		for i := 0; i < 8; i++ {
+			fmt.Printf("%d  ", 8 - i)
+			for j := 0; j < 8; j++ {
+				if (board[i][j] == 0) {
+					color.Unset()
+				} else if (0x80 & board[i][j]) == WHITE {
+					color.Set(color.FgBlue)
+				} else if (0x80 & board[i][j]) == BLACK {
+					color.Set(color.FgRed)
+				}
+				fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
+			}
+			color.Unset()
+			fmt.Println()
+		}
+		fmt.Println("   A  B  C  D  E  F  G  H ")
+	} else {
+		for i := 7; i >= 0; i-- {
+			fmt.Printf("%d  ", i + 1)
+			for j := 7; j >= 0; j-- {
+				if (board[i][j] == 0) {
+					color.Unset()
+				} else if (0x80 & board[i][j] == WHITE) {
+					color.Set(color.FgRed)
+				} else if (0x80 & board[i][j] == BLACK) {
+					color.Set(color.FgBlue)
+				}
+				fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
+			}
+			color.Unset()
+			fmt.Println()
+		}
+		fmt.Println("   H  G  F  E  D  C  B  A ")
+	}
 }
 
 func updateMoveList(game *Game, moves string) {
 	moveArr := strings.Split(moves, " ")
-	currMove := game.moves
-
-	for i, move := range moveArr {
-		if i >= game.numMoves {
-			moveStruct := Move{data : move}
-			appendMove(&game.moves, &moveStruct)
-			game.numMoves += 1
-			completeMove(&game.board, move)
-		} else if move != currMove.data {
-			fmt.Println("Moves corrupted, exiting")
-			return
-		}
-	}
+	moveData := moveArr[len(moveArr) - 1]
+	newMove := Move{data : moveData}
+	appendMove(&(game.moves), &newMove)
+	game.numMoves += 1
+	completeMove(&game.board, moveData)
 }
 
 func appendMove(lastMove **Move, newMove *Move) {
@@ -196,18 +320,63 @@ func completeMove(board *[8][8]byte, move string) {
 	(*board)[endRow][endCol] = piece
 }
 
-func getJSON(client *oauth2ns.AuthorizedClient, url string, target interface{}) error {
-	resp, err := client.Get(url)
+func getUser(client *oauth2ns.AuthorizedClient) User {
+	resp, err := client.Get(lichessURL + accountPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
 
-	return json.NewDecoder(resp.Body).Decode(target)
+	dec := json.NewDecoder(resp.Body)
+	user := User{}
+	err = dec.Decode(&user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return user
 }
 
-func getJSONStream(client *oauth2ns.AuthorizedClient, url string, target interface{}) {
-	resp, err := client.Get(url)
+func waitForGame(client *oauth2ns.AuthorizedClient) EventResp {
+	resp, err := client.Get(lichessURL + streamEventPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	dec := json.NewDecoder(resp.Body)
+	event := EventResp{}
+	for {
+		err := dec.Decode(&event)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		switch event.Type {
+			case "gameStart":
+				return event
+			case "challenge":
+				fmt.Printf("Challenge from %s\n", event.Challenge.Challenger.Name)
+				reader := bufio.NewReader(os.Stdin)
+				fmt.Print("Do you accept? (y or n): ")
+				response, _ := reader.ReadString('\n')
+
+				if response == "y" {
+					client.Post(lichessURL + challengePath + event.Challenge.ID + "/accept", "plain/text", strings.NewReader(""))
+				} else if response == "n" {
+					client.Post(lichessURL + challengePath + event.Challenge.ID + "/decline", "plain/text", strings.NewReader(""))
+				} else {
+					fmt.Println("Invalid response")
+				}
+		}
+	}
+}
+
+func seekGame(client *oauth2ns.AuthorizedClient, gameReq GameReq) {
+
+}
+
+func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch chan<- BoardResp) {
+	resp, err := client.Get(lichessURL + streamBoardPath + gameId)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -215,25 +384,23 @@ func getJSONStream(client *oauth2ns.AuthorizedClient, url string, target interfa
 
 	dec := json.NewDecoder(resp.Body)
 	for {
-		err := dec.Decode(target)
+		boardResp := BoardResp{}
+		err := dec.Decode(&boardResp)
 		if err != nil {
 			if err == io.EOF {
-		 		break
+				break
 			}
 			log.Fatal(err)
 		}
-		t, ok := target.(*EventResp)
-		if ok {
-			if t.Type == "gameStart" {
-				break
-			}
-		} else {
-			t, ok := target.(*BoardResp)
-			if ok {
-				if t.Type == "gameState" {
-					
-				}
-			}
-		}
+
+		ch <- boardResp
 	}
+}
+
+func promptAction(client *oauth2ns.AuthorizedClient, gameId string) {
+	fmt.Print("Action (move, resign or draw): ")
+	reader := bufio.NewReader(os.Stdin)
+	response, _ := reader.ReadString('\n')
+	fmt.Println("end")
+	client.Post(lichessURL + gamePath + gameId + movePath + response, "plain/text", strings.NewReader(""))
 }
