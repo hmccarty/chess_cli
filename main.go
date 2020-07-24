@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"log"
 	"fmt"
-	//"sync"
+	"sync"
 	"strings"
 	"os"
 	"encoding/json"
@@ -133,7 +133,7 @@ func main() {
 	conf := &oauth2.Config{
 		ClientID:     os.Getenv("LICHESS_CLIENT_ID"),
 		ClientSecret: os.Getenv("LICHESS_CLIENT_SECRET"),
-		Scopes:       []string{"preference:read", 
+		Scopes:       []string{"preference:read",
 		                       "challenge:read", "challenge:write",
 							   "bot:play", "board:play"},
 		Endpoint: oauth2.Endpoint{
@@ -146,48 +146,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
-	user := getUser(client)
 	event := waitForGame(client)
-	game := Game{ID : event.Game.ID}
-
 	ch := make(chan BoardResp)
-	go watchForGameUpdates(client, event.Game.ID, ch)
+	
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	for {
-		boardResp := <- ch
+	go watchForGameUpdates(client, event.Game.ID, ch, &wg)
+	go handleUserInput(client, event.Game.ID, ch, &wg)
 
-		switch boardResp.Type {
-			case "gameFull":
-				if boardResp.White.ID == user.ID {
-					game.userWhite = true
-				} else {
-					game.userWhite = false
-				}
-				game.usersTurn = true
-				game.board = createBoard(game.userWhite)
-				printBoard(game.board, game.userWhite)
-			case "gameState":
-				switch boardResp.Status {
-					case "aborted", "resign", "timeout", "mate", "nostart":
-						printFooter(boardResp.Winner + " wins!")
-						break
-					case "stalemate":
-						printFooter("Stalemate!")
-						break
-					default:
-						updateMoveList(&game, boardResp.Moves)
-						printHeader(game.numMoves)
-						printBoard(game.board, game.userWhite)
-						game.usersTurn = !game.usersTurn
-				}
-			case "chatLine":
-		}
-
-		if game.usersTurn {
-			promptAction(client, game.ID)
-		}
-	}
+	wg.Wait()
 }
 
 func createBackRank(c byte) [8]byte {
@@ -375,7 +343,9 @@ func seekGame(client *oauth2ns.AuthorizedClient, gameReq GameReq) {
 
 }
 
-func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch chan<- BoardResp) {
+func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch chan<- BoardResp, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	resp, err := client.Get(lichessURL + streamBoardPath + gameId)
 	if err != nil {
 		log.Fatal(err)
@@ -388,7 +358,7 @@ func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch ch
 		err := dec.Decode(&boardResp)
 		if err != nil {
 			if err == io.EOF {
-				break
+				return
 			}
 			log.Fatal(err)
 		}
@@ -397,10 +367,61 @@ func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch ch
 	}
 }
 
+func handleUserInput(client *oauth2ns.AuthorizedClient, gameId string, ch <-chan BoardResp, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	user := getUser(client)
+	game := Game{ID : gameId}
+
+	for {
+		boardResp := <- ch
+
+		switch boardResp.Type {
+			case "gameFull":
+				if boardResp.White.ID == user.ID {
+					game.userWhite = true
+					game.usersTurn = true
+				} else {
+					game.userWhite = false
+				}
+				game.board = createBoard(game.userWhite)
+				printBoard(game.board, game.userWhite)
+			case "gameState":
+				switch boardResp.Status {
+					case "aborted", "resign", "timeout", "mate", "nostart":
+						updateMoveList(&game, boardResp.Moves)
+						printHeader(game.numMoves)
+						printBoard(game.board, game.userWhite)
+						fmt.Println(boardResp.Winner)
+						printFooter(boardResp.Winner + " wins!")
+						return
+					case "stalemate":
+						printFooter("Stalemate!")
+						return
+					default:
+						updateMoveList(&game, boardResp.Moves)
+						printHeader(game.numMoves)
+						printBoard(game.board, game.userWhite)
+						game.usersTurn = !game.usersTurn
+				}
+			case "chatLine":
+		}
+
+		if game.usersTurn {
+			promptAction(client, game.ID)
+		}
+	}
+}
+
 func promptAction(client *oauth2ns.AuthorizedClient, gameId string) {
 	fmt.Print("Action (move, resign or draw): ")
 	reader := bufio.NewReader(os.Stdin)
 	response, _ := reader.ReadString('\n')
-	fmt.Println("end")
-	client.Post(lichessURL + gamePath + gameId + movePath + response, "plain/text", strings.NewReader(""))
+	path := lichessURL + gamePath + gameId + movePath + response
+	path = strings.TrimSpace(path)
+	_, err := client.Post(path, "plain/text", strings.NewReader(""))
+	if err != nil {
+		fmt.Println("Invalid option, try again")
+		promptAction(client, gameId)
+	}
 }
