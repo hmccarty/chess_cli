@@ -13,6 +13,8 @@ import (
 	"github.com/fatih/color"
 	"github.com/nmrshll/oauth2-noserver"
 	"golang.org/x/oauth2"
+        ui "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/widgets"
 )
 
 type User struct {
@@ -71,6 +73,7 @@ type BoardResp struct {
 	Black BlackSide `json:"black,omitempty"`
 	Winner string `json:"winner,omitempty"`
 }
+
 
 type WhiteSide struct {
 	ID string `json:"id"`
@@ -148,7 +151,7 @@ func main() {
 	}
 	event := waitForGame(client)
 	ch := make(chan BoardResp)
-	
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -197,7 +200,7 @@ func createBoard(isWhite bool) [8][8]byte {
 }
 
 func printHeader(moveNum int) {
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
+	s := "~~~~~~~~~~~~~~~~~~~~\n"
 	
 	var turnLabel string
 	if (moveNum % 2) == 0 {
@@ -206,13 +209,15 @@ func printHeader(moveNum int) {
 		turnLabel = "Black"
 	}
 
-	fmt.Printf("Move #%d, %s's turn\n", moveNum, turnLabel)
+	s += fmt.Sprintf("Move %d, %s's turn\n", moveNum, turnLabel)
+	return s
 }
 
 func printFooter(result string) {
-	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
+	s := "~~~~~~~~~~~~~~~~~~~~\n"
 
-	fmt.Printf("%s\n", result)
+	s += fmt.Sprintf("%s\n", result)
+	return s
 }
 
 
@@ -229,7 +234,7 @@ func printBoard(board [8][8]byte, isUserWhite bool) {
 				} else if (0x80 & board[i][j]) == BLACK {
 					color.Set(color.FgRed)
 				}
-				fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
+				fmt.Sprintf("%s  ", pieceToChar[0x0F & board[i][j]])
 			}
 			color.Unset()
 			fmt.Println()
