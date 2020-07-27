@@ -400,7 +400,7 @@ func handleUserInput(client *oauth2ns.AuthorizedClient, gameId string, ch <-chan
 						return
 					default:
 						updateMoveList(&game, boardResp.Moves)
-						printHeader(game.numMoves)
+						//printHeader(game.numMoves)
 						printBoard(game.board, game.userWhite)
 						game.usersTurn = !game.usersTurn
 				}
