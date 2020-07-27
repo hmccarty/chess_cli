@@ -13,8 +13,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/nmrshll/oauth2-noserver"
 	"golang.org/x/oauth2"
-        ui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 )
 
 type User struct {
@@ -73,7 +71,6 @@ type BoardResp struct {
 	Black BlackSide `json:"black,omitempty"`
 	Winner string `json:"winner,omitempty"`
 }
-
 
 type WhiteSide struct {
 	ID string `json:"id"`
@@ -151,7 +148,7 @@ func main() {
 	}
 	event := waitForGame(client)
 	ch := make(chan BoardResp)
-
+	
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -200,7 +197,7 @@ func createBoard(isWhite bool) [8][8]byte {
 }
 
 func printHeader(moveNum int) {
-	s := "~~~~~~~~~~~~~~~~~~~~\n"
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
 	
 	var turnLabel string
 	if (moveNum % 2) == 0 {
@@ -209,15 +206,13 @@ func printHeader(moveNum int) {
 		turnLabel = "Black"
 	}
 
-	s += fmt.Sprintf("Move %d, %s's turn\n", moveNum, turnLabel)
-	return s
+	fmt.Printf("Move #%d, %s's turn\n", moveNum, turnLabel)
 }
 
 func printFooter(result string) {
-	s := "~~~~~~~~~~~~~~~~~~~~\n"
+	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
 
-	s += fmt.Sprintf("%s\n", result)
-	return s
+	fmt.Printf("%s\n", result)
 }
 
 
@@ -234,7 +229,7 @@ func printBoard(board [8][8]byte, isUserWhite bool) {
 				} else if (0x80 & board[i][j]) == BLACK {
 					color.Set(color.FgRed)
 				}
-				fmt.Sprintf("%s  ", pieceToChar[0x0F & board[i][j]])
+				fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
 			}
 			color.Unset()
 			fmt.Println()
@@ -242,7 +237,7 @@ func printBoard(board [8][8]byte, isUserWhite bool) {
 		fmt.Println("   A  B  C  D  E  F  G  H ")
 	} else {
 		for i := 7; i >= 0; i-- {
-			fmt.Printf("%d  ", i + 1)
+			fmt.Printf("%d  ", 8 - i)
 			for j := 7; j >= 0; j-- {
 				if (board[i][j] == 0) {
 					color.Unset()
@@ -414,7 +409,9 @@ func handleUserInput(client *oauth2ns.AuthorizedClient, gameId string, ch <-chan
 
 		if game.usersTurn {
 			promptAction(client, game.ID)
+			fmt.Println("\r\033[K\033[1A");
 		}
+		fmt.Println("\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\n")
 	}
 }
 
@@ -426,7 +423,7 @@ func promptAction(client *oauth2ns.AuthorizedClient, gameId string) {
 	path = strings.TrimSpace(path)
 	_, err := client.Post(path, "plain/text", strings.NewReader(""))
 	if err != nil {
-		fmt.Println("Invalid option, try again")
+		fmt.Print("Invalid option, try again\n")
 		promptAction(client, gameId)
 	}
 }
