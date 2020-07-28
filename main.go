@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 
 	"github.com/fatih/color"
-	"github.com/nmrshll/oauth2-noserver"
 	"golang.org/x/oauth2"
 )
 
@@ -142,7 +141,7 @@ func main() {
 		},
 	}
 
-	client, err := oauth2ns.AuthenticateUser(conf)
+	client, err := AuthenticateUser(conf)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -288,7 +287,7 @@ func completeMove(board *[8][8]byte, move string) {
 	(*board)[endRow][endCol] = piece
 }
 
-func getUser(client *oauth2ns.AuthorizedClient) User {
+func getUser(client *AuthorizedClient) User {
 	resp, err := client.Get(lichessURL + accountPath)
 	if err != nil {
 		log.Fatal(err)
@@ -304,7 +303,7 @@ func getUser(client *oauth2ns.AuthorizedClient) User {
 	return user
 }
 
-func waitForGame(client *oauth2ns.AuthorizedClient) EventResp {
+func waitForGame(client *AuthorizedClient) EventResp {
 	resp, err := client.Get(lichessURL + streamEventPath)
 	if err != nil {
 		log.Fatal(err)
@@ -339,11 +338,11 @@ func waitForGame(client *oauth2ns.AuthorizedClient) EventResp {
 	}
 }
 
-func seekGame(client *oauth2ns.AuthorizedClient, gameReq GameReq) {
+func seekGame(client *AuthorizedClient, gameReq GameReq) {
 
 }
 
-func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch chan<- BoardResp, wg *sync.WaitGroup) {
+func watchForGameUpdates(client *AuthorizedClient, gameId string, ch chan<- BoardResp, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	resp, err := client.Get(lichessURL + streamBoardPath + gameId)
@@ -367,7 +366,7 @@ func watchForGameUpdates(client *oauth2ns.AuthorizedClient, gameId string, ch ch
 	}
 }
 
-func handleUserInput(client *oauth2ns.AuthorizedClient, gameId string, ch <-chan BoardResp, wg *sync.WaitGroup) {
+func handleUserInput(client *AuthorizedClient, gameId string, ch <-chan BoardResp, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	user := getUser(client)
@@ -415,7 +414,7 @@ func handleUserInput(client *oauth2ns.AuthorizedClient, gameId string, ch <-chan
 	}
 }
 
-func promptAction(client *oauth2ns.AuthorizedClient, gameId string) {
+func promptAction(client *AuthorizedClient, gameId string) {
 	fmt.Print("Action (move, resign or draw): ")
 	reader := bufio.NewReader(os.Stdin)
 	response, _ := reader.ReadString('\n')
