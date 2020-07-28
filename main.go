@@ -145,10 +145,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	event := waitForGame(client)
-	ch := make(chan BoardResp)
-	
+
 	var wg sync.WaitGroup
+	wg.Add(1)
+
+	event := EventResp{}
+	go waitForGame(client, &event, &wg)
+	go seekGame(client)
+	wg.Wait()
+
+	ch := make(chan BoardResp)
 	wg.Add(2)
 
 	go watchForGameUpdates(client, event.Game.ID, ch, &wg)
@@ -303,7 +309,9 @@ func getUser(client *AuthorizedClient) User {
 	return user
 }
 
-func waitForGame(client *AuthorizedClient) EventResp {
+func waitForGame(client *AuthorizedClient, eventResp *EventResp, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	resp, err := client.Get(lichessURL + streamEventPath)
 	if err != nil {
 		log.Fatal(err)
@@ -320,7 +328,8 @@ func waitForGame(client *AuthorizedClient) EventResp {
 
 		switch event.Type {
 			case "gameStart":
-				return event
+				*eventResp = event;
+				return
 			case "challenge":
 				fmt.Printf("Challenge from %s\n", event.Challenge.Challenger.Name)
 				reader := bufio.NewReader(os.Stdin)
@@ -338,8 +347,8 @@ func waitForGame(client *AuthorizedClient) EventResp {
 	}
 }
 
-func seekGame(client *AuthorizedClient, gameReq GameReq) {
-
+func seekGame(client *AuthorizedClient) {
+	
 }
 
 func watchForGameUpdates(client *AuthorizedClient, gameId string, ch chan<- BoardResp, wg *sync.WaitGroup) {

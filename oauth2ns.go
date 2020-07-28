@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -18,6 +17,7 @@ import (
 	"github.com/palantir/stacktrace"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/99designs/keyring"
+	// "github.com/jinzhu/copier"
 	"golang.org/x/oauth2"
 )
 
@@ -201,7 +201,9 @@ func callbackHandler(ctx context.Context, oauthConfig *oauth2.Config, clientChan
 			token,
 		}
 
-		createKeyRing(token)
+		// tokenCpy := oauth2.Token{}
+		// copier.Copy(token, &tokenCpy)
+		// createKeyRing(&tokenCpy)
 
 		// show success page
 		successPage := `
@@ -229,11 +231,11 @@ func isAuthorized() bool {
 }
 
 func createKeyRing(token *oauth2.Token) {
-	ucd, err := os.UserConfigDir()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	// ucd, err := os.UserConfigDir()
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
 	ring, _ := keyring.Open(keyring.Config{
 		ServiceName: serviceName,
@@ -256,7 +258,8 @@ func createKeyRing(token *oauth2.Token) {
 		PassPrefix: serviceName,
 
 		// Fallback encrypted file
-		FileDir: path.Join(ucd, serviceName, "keyring"),
+		// path.Join(ucd, serviceName, "keyring"),
+		FileDir: path.Join("~", serviceName, "keyring"),
 	})
 
 	tokenJSON, err := json.Marshal(token)
