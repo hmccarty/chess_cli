@@ -1,4 +1,4 @@
-module github.com/hmccarty/lichess_cli
+module github.com/hmccarty/chess_cli
 
 go 1.14
 

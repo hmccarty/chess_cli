@@ -1,4 +1,4 @@
-package main
+package lichess
 
 import (
 	"context"
