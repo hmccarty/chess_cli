@@ -5,7 +5,7 @@ import (
 	"bufio"
 	"fmt"
 	"sync"
-	"github.com/hmccarty/chess_cli/lichess"
+	"github.com/hmccarty/lichess"
 )
 
 type Engine interface {
