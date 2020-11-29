@@ -18,7 +18,7 @@ type User interface {
 	getID() string
 }
 
-type GameChannel interface {
+type GameMsg interface {
 	getType() string
 	isUserWhite() bool
 	getGameStatus() string
@@ -29,54 +29,48 @@ type GameChannel interface {
 func main() {
 	//engine := lichess.Lichess{}
 	engine := DefaultEngine{}
-	gameChannel := make(chan DefaultGameChannel)
+	gameChannel := make(chan DefaultGameMsg)
 	engine.Setup(gameChannel)
 
 	var wg sync.WaitGroup
-
 	wg.Add(2)
 	go handleGame(gameChannel, &wg)
+	go engine.run(&wg)
 	wg.Wait()
 }
 
-func handleGame(gameChannel chan DefaultGameChannel, wg *sync.WaitGroup) {
+func handleGame(gameChannel chan DefaultGameMsg, wg *sync.WaitGroup) {
 	defer wg.Done()
 	game := Game{}
+	userColor := WHITE
 
 	for {
 		gameUpdate := <-gameChannel
 
 		switch gameUpdate.getType() {
 			case "gameFull":
-				if gameUpdate.isUserWhite() {
-					game.userWhite = true
-					game.usersTurn = true
-				} else {
-					game.userWhite = false
-				}
-				game.board = createBoard(game.userWhite)
-				printBoard(game.board, game.userWhite)
+				game.board = createBoard()
+				printBoard(game.board)
 			case "gameState":
 				switch gameUpdate.getGameStatus() {
 					case "aborted", "resign", "timeout", "mate", "nostart":
-						updateMoveList(&game, gameUpdate.getCurrMove())
+						game.AddNewMove(gameUpdate.getCurrMove())
 						printHeader(game.numMoves)
-						printBoard(game.board, game.userWhite)
+						printBoard(game.board)
 						printFooter(gameUpdate.getWinner() + " wins!")
 						return
 					case "stalemate":
 						printFooter("Stalemate!")
 						return
 					default:
-						updateMoveList(&game, gameUpdate.getCurrMove())
+						game.AddNewMove(gameUpdate.getCurrMove())
 						printHeader(game.numMoves)
-						printBoard(game.board, game.userWhite)
-						game.usersTurn = !game.usersTurn
+						printBoard(game.board)
 				}
 			case "chatLine":
 		}
 
-		if game.usersTurn {
+		if game.turnColor == userColor {
 			//promptAction(engine)
 			//fmt.Println("\r\033[K\033[1A");
 		}

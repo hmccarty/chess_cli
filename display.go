@@ -24,40 +24,26 @@ func printFooter(result string) {
 	fmt.Printf("%s\n", result)
 }
 
-func printBoard(board [8][8]byte, isUserWhite bool) {
-	if isUserWhite {
+func printBoard(board [8][8]*Piece) {
 		for i := 0; i < 8; i++ {
 			fmt.Printf("%d  ", 8 - i)
 			for j := 0; j < 8; j++ {
-				if (board[i][j] == 0) {
+				if board[i][j] == nil {
 					color.Unset()
-				} else if (0x80 & board[i][j]) == WHITE {
+				} else if board[i][j].color == WHITE {
 					color.Set(color.FgBlue)
-				} else if (0x80 & board[i][j]) == BLACK {
+				} else if board[i][j].color == BLACK {
 					color.Set(color.FgRed)
 				}
-				fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
+
+				if board[i][j] == nil {
+					fmt.Printf("X  ")
+				} else {
+					fmt.Printf("%s  ", pieceToChar[board[i][j].class])
+				}
 			}
 			color.Unset()
 			fmt.Println()
 		}
 		fmt.Println("   A  B  C  D  E  F  G  H ")
-	} else {
-		for i := 7; i >= 0; i-- {
-			fmt.Printf("%d  ", 8 - i)
-			for j := 7; j >= 0; j-- {
-				if (board[i][j] == 0) {
-					color.Unset()
-				} else if (0x80 & board[i][j] == WHITE) {
-					color.Set(color.FgRed)
-				} else if (0x80 & board[i][j] == BLACK) {
-					color.Set(color.FgBlue)
-				}
-				fmt.Printf("%s  ", pieceToChar[0x0F & board[i][j]])
-			}
-			color.Unset()
-			fmt.Println()
-		}
-		fmt.Println("   H  G  F  E  D  C  B  A ")
-	}
 }
