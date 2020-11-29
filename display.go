@@ -24,8 +24,6 @@ func printFooter(result string) {
 	fmt.Printf("%s\n", result)
 }
 
-
-
 func printBoard(board [8][8]byte, isUserWhite bool) {
 	if isUserWhite {
 		for i := 0; i < 8; i++ {

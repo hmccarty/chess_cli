@@ -1,17 +1,17 @@
 package main
 
 import (
-	"os"
-	"bufio"
+	//"os"
+	//"bufio"
 	"fmt"
 	"sync"
-	"github.com/hmccarty/lichess"
+	//"github.com/hmccarty/lichess"
 )
 
 type Engine interface {
 	Setup()
-	getUser() User
-	getBoardChannel() <-chan GameChannel
+	getUser()
+	getGameChannel()
 }
 
 type User interface {
@@ -20,28 +20,35 @@ type User interface {
 
 type GameChannel interface {
 	getType() string
-	getMoves() string
+	isUserWhite() bool
+	getGameStatus() string
+	getCurrMove() string
 	getWinner() string
 }
 
 func main() {
-	engine := lichess.Lichess{}
+	//engine := lichess.Lichess{}
+	engine := DefaultEngine{}
+	gameChannel := make(chan DefaultGameChannel)
+	engine.Setup(gameChannel)
 
-	engine.authenticateClient()
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+	go handleGame(gameChannel, &wg)
+	wg.Wait()
 }
 
-func handleUserInput(engine Engine, gameId string, ch <-chan lichess.BoardResp, wg *sync.WaitGroup) {
+func handleGame(gameChannel chan DefaultGameChannel, wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	user := engine.getUser()
-	game := Game{ID : gameId}
+	game := Game{}
 
 	for {
-		boardResp := <- ch
+		gameUpdate := <-gameChannel
 
-		switch boardResp.Type {
+		switch gameUpdate.getType() {
 			case "gameFull":
-				if boardResp.White.ID == user.getID() {
+				if gameUpdate.isUserWhite() {
 					game.userWhite = true
 					game.usersTurn = true
 				} else {
@@ -50,20 +57,19 @@ func handleUserInput(engine Engine, gameId string, ch <-chan lichess.BoardResp, 
 				game.board = createBoard(game.userWhite)
 				printBoard(game.board, game.userWhite)
 			case "gameState":
-				switch boardResp.Status {
+				switch gameUpdate.getGameStatus() {
 					case "aborted", "resign", "timeout", "mate", "nostart":
-						updateMoveList(&game, boardResp.Moves)
+						updateMoveList(&game, gameUpdate.getCurrMove())
 						printHeader(game.numMoves)
 						printBoard(game.board, game.userWhite)
-						fmt.Println(boardResp.Winner)
-						printFooter(boardResp.Winner + " wins!")
+						printFooter(gameUpdate.getWinner() + " wins!")
 						return
 					case "stalemate":
 						printFooter("Stalemate!")
 						return
 					default:
-						updateMoveList(&game, boardResp.Moves)
-						//printHeader(game.numMoves)
+						updateMoveList(&game, gameUpdate.getCurrMove())
+						printHeader(game.numMoves)
 						printBoard(game.board, game.userWhite)
 						game.usersTurn = !game.usersTurn
 				}
@@ -71,22 +77,22 @@ func handleUserInput(engine Engine, gameId string, ch <-chan lichess.BoardResp, 
 		}
 
 		if game.usersTurn {
-			promptAction(game.ID)
-			fmt.Println("\r\033[K\033[1A");
+			//promptAction(engine)
+			//fmt.Println("\r\033[K\033[1A");
 		}
 		fmt.Println("\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\n")
 	}
 }
 
-func promptAction(gameId string) {
-	fmt.Print("Action (move, resign or draw): ")
-	reader := bufio.NewReader(os.Stdin)
-	response, _ := reader.ReadString('\n')
-	path := lichessURL + gamePath + gameId + movePath + response
-	path = strings.TrimSpace(path)
-	_, err := client.Post(path, "plain/text", strings.NewReader(""))
-	if err != nil {
-		fmt.Print("Invalid option, try again\n")
-		promptAction(client, gameId)
-	}
-}
+// func promptAction(engine Engine) {
+// 	fmt.Print("Action (move, resign or draw): ")
+// 	reader := bufio.NewReader(os.Stdin)
+// 	response, _ := reader.ReadString('\n')
+// 	path := lichessURL + gamePath + gameId + movePath + response
+// 	path = strings.TrimSpace(path)
+// 	_, err := client.Post(path, "plain/text", strings.NewReader(""))
+// 	if err != nil {
+// 		fmt.Print("Invalid option, try again\n")
+// 		promptAction(client, gameId)
+// 	}
+// }
