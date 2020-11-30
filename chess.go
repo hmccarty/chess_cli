@@ -1,5 +1,9 @@
 package main
 
+import (
+	"fmt"
+)
+
 const ASCII_ROW_OFFSET = 49
 const ASCII_COL_OFFSET = 97
 
@@ -104,7 +108,9 @@ func (game *Game) Setup() {
 }
 
 func (game *Game) AddNewMove(move string) {
+	fmt.Println("Checking new move...")
 	if game.IsMoveValid(move) {
+		fmt.Println("New move valid")
 		newMove := Move{data : move}
 		if game.lastMove == nil {
 			game.moves = &newMove
@@ -129,7 +135,7 @@ func (game *Game) IsMoveValid(move string) bool {
 	deadPiece := game.board[endRow][endCol]
 	piece := game.board[startRow][startCol]
 
-	if (piece.color == deadPiece.color) ||
+	if (deadPiece != nil && piece.color == deadPiece.color) ||
 	   (!IsWithinRange(piece, startRow, startCol, endRow, endCol)) ||
 	   (deadPiece.class == KING) {
 		return false

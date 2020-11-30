@@ -2,6 +2,7 @@ package main
 
 import (
 	"sync"
+	"fmt"
 )
 
 type DefaultEngine struct {
@@ -40,12 +41,19 @@ func (engine *DefaultEngine) getGameChannel() chan DefaultGameMsg {
 
 func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	defer wg.Done()
-	for {
-		gameMsg := DefaultGameMsg{}
-		gameMsg.msgType = "gameFull"
-		engine.gameChannel <- gameMsg
+	gameMsg := DefaultGameMsg{}
+	gameMsg.msgType = "gameFull"
+	engine.gameChannel <- gameMsg
 
-		move := <- 
+	for {
+		move := <- engine.inputChannel
+		fmt.Printf("Received move: %s\n", move)
+		engine.game.AddNewMove(move)
+
+		gameMsg := DefaultGameMsg{}
+		gameMsg.msgType = "gameState"
+		gameMsg.currMove = move
+		engine.gameChannel <- gameMsg
 	}
 }
 

@@ -1,8 +1,8 @@
 package main
 
 import (
-	//"os"
-	//"bufio"
+	"os"
+	"bufio"
 	"fmt"
 	"sync"
 	//"github.com/hmccarty/lichess"
@@ -30,16 +30,18 @@ func main() {
 	//engine := lichess.Lichess{}
 	engine := DefaultEngine{}
 	gameChannel := make(chan DefaultGameMsg)
-	engine.Setup(gameChannel)
+	inputChannel := make(chan string)
+	engine.Setup(gameChannel, inputChannel)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go handleGame(gameChannel, &wg)
+	go handleGame(gameChannel, inputChannel, &wg)
 	go engine.run(&wg)
 	wg.Wait()
 }
 
-func handleGame(gameChannel chan DefaultGameMsg, wg *sync.WaitGroup) {
+func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
+				wg *sync.WaitGroup) {
 	defer wg.Done()
 	game := Game{}
 	userColor := WHITE
@@ -70,6 +72,10 @@ func handleGame(gameChannel chan DefaultGameMsg, wg *sync.WaitGroup) {
 			case "chatLine":
 		}
 
+		fmt.Print("Action (move, resign or draw): ")
+		reader := bufio.NewReader(os.Stdin)
+		response, _ := reader.ReadString('\n')
+		inputChannel <- response
 		if game.turnColor == userColor {
 			//promptAction(engine)
 			//fmt.Println("\r\033[K\033[1A");
