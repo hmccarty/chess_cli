@@ -51,29 +51,34 @@ type Piece struct {
 	color Color
 	row int
 	col int
+	hasMoved bool
 }
 
 type Move struct {
 	data string
+	startRow int
+	startCol int
+	endRow int
+	endCol int
 	nextMove *Move
 }
 
 func createBackRank(color Color, row int) [8]*Piece {
-	backRank := [8]*Piece {&Piece{ROOK, color, row, 0},
-						   &Piece{KNIGHT, color, row, 1},
-						   &Piece{BISHOP, color, row, 2},
-						   &Piece{QUEEN, color, row, 3},
-						   &Piece{KING, color, row, 4},
-						   &Piece{BISHOP, color, row, 5},
-						   &Piece{KNIGHT, color, row, 6},
-						   &Piece{ROOK, color, row, 7}}
+	backRank := [8]*Piece {&Piece{ROOK, color, row, 0, false},
+						   &Piece{KNIGHT, color, row, 1, false},
+						   &Piece{BISHOP, color, row, 2, false},
+						   &Piece{QUEEN, color, row, 3, false},
+						   &Piece{KING, color, row, 4, false},
+						   &Piece{BISHOP, color, row, 5, false},
+						   &Piece{KNIGHT, color, row, 6, false},
+						   &Piece{ROOK, color, row, 7, false}}
 	return backRank
 }
 
 func createPawnRank(color Color, row int) [8]*Piece {
 	pawnRank := [8]*Piece{}
 	for i := 0; i < 8; i++ {
-		pawnRank[i] = &Piece{PAWN, color, row, i}
+		pawnRank[i] = &Piece{PAWN, color, row, i, false}
 	}
 	return pawnRank
 }
@@ -89,14 +94,14 @@ func createBoard() [8][8]*Piece {
 	backColor := BLACK
 	frontColor := WHITE
 
-	board := [8][8]*Piece{createBackRank(backColor, 7),
-				          createPawnRank(backColor, 6),
+	board := [8][8]*Piece{createBackRank(frontColor, 0),
+						  createPawnRank(frontColor, 1),
 				 	 	  createEmptyRank(),
 				 	 	  createEmptyRank(),
 				 	 	  createEmptyRank(),
-				 		  createEmptyRank(),
-				 		  createPawnRank(frontColor, 1),
-				 		  createBackRank(frontColor, 0),}
+						  createEmptyRank(),
+						  createPawnRank(backColor, 6),
+						  createBackRank(backColor, 7),}
 	return board
 }
 
@@ -107,57 +112,62 @@ func (game *Game) Setup() {
 	game.turnColor = WHITE
 }
 
-func (game *Game) AddNewMove(move string) {
-	fmt.Println("Checking new move...")
-	if game.IsMoveValid(move) {
-		fmt.Println("New move valid")
-		newMove := Move{data : move}
+func (game *Game) AddNewMove(moveString string) {
+	moveData := []byte(moveString)
+
+	startCol := int(moveData[0] - ASCII_COL_OFFSET)
+	startRow := int(moveData[1] - ASCII_ROW_OFFSET)
+
+	endCol := int(moveData[2] - ASCII_COL_OFFSET)
+	endRow := int(moveData[3] - ASCII_ROW_OFFSET)
+
+	move := Move{moveString, startRow, startCol, endRow, endCol, nil}
+
+	if game.IsMoveValid(&move) {
 		if game.lastMove == nil {
-			game.moves = &newMove
-			game.lastMove = &newMove
+			game.moves = &move
+			game.lastMove = &move
 		} else {
-			game.lastMove.nextMove = &newMove
+			game.lastMove.nextMove = &move
 			game.lastMove = game.lastMove.nextMove
 		}
 		game.numMoves += 1
 	}
 }
 
-func (game *Game) IsMoveValid(move string) bool {
-	moveData := []byte(move)
+func (game *Game) IsMoveValid(move *Move) bool {
+	piece := game.board[move.startRow][move.startCol]
+	deadPiece := game.board[move.endRow][move.endCol]
 
-	startCol := int(moveData[0] - ASCII_COL_OFFSET)
-	startRow := int(7 - (moveData[1] - ASCII_ROW_OFFSET))
-
-	endCol := int(moveData[2] - ASCII_COL_OFFSET)
-	endRow := int(7 - (moveData[3] - ASCII_ROW_OFFSET))
-
-	deadPiece := game.board[endRow][endCol]
-	piece := game.board[startRow][startCol]
-
-	if (deadPiece != nil && piece.color == deadPiece.color) ||
-	   (!IsWithinRange(piece, startRow, startCol, endRow, endCol)) ||
-	   (deadPiece.class == KING) {
+	if (piece == nil) ||
+	   (deadPiece != nil && piece.color == deadPiece.color) ||
+	   (!IsWithinRange(game.board, piece, move.endRow, move.endCol)) {
 		return false
 	}
 
-	game.board[startRow][startCol] = nil
-	game.board[endRow][endCol] = piece
+	game.board[move.startRow][move.startCol] = nil
+	game.board[move.endRow][move.endCol] = piece
+	
+	piece.row = move.endRow
+	piece.col = move.endCol
+	if !piece.hasMoved {
+		piece.hasMoved = true
+	}
 
 	return true
 }
 
-func IsWithinRange(piece *Piece, startRow int, startCol int,
+func IsWithinRange(board [8][8]*Piece, piece *Piece,
 				   endRow int, endCol int) bool {
-	if (startRow > 7 || startRow < 0) ||
-	   (startCol > 7 || startCol < 0) ||
+	if (piece.row > 7 || piece.row < 0) ||
+	   (piece.col > 7 || piece.col < 0) ||
 	   (endRow > 7 || endRow < 0) ||
 	   (endCol > 7 || endCol < 0) {
 		return false
 	}
 
-	rowDiff := endRow - startRow
-	colDiff := endCol - startCol
+	rowDiff := endRow - piece.row
+	colDiff := endCol - piece.col
 
 	if (rowDiff == 0 && colDiff == 0) {
 		return false
@@ -170,21 +180,44 @@ func IsWithinRange(piece *Piece, startRow int, startCol int,
 	case KING:
 		return (abs(rowDiff) <= 1) && (abs(colDiff) <= 1)
 	case QUEEN:
-		return trans || diag
+		return (trans || diag) && !PathHasObstacle(board, piece.row, piece.col,
+											       endRow, endCol)
 	case ROOK:
-		return trans
+		return trans && !PathHasObstacle(board, piece.row, piece.col,
+										 endRow, endCol)
 	case BISHOP:
-		return diag
+		return diag && !PathHasObstacle(board, piece.row, piece.col,
+									    endRow, endCol)
 	case KNIGHT:
 		return ((abs(rowDiff) == 1) && (abs(colDiff) == 2)) ||
 			   ((abs(rowDiff) == 2) && (abs(colDiff) == 1))
 	case PAWN:
 		if (colDiff > 1 || colDiff < -1) {
 			return false
-		} 
-		return (piece.color == WHITE && rowDiff == 1) ||
-		       (piece.color == BLACK && rowDiff == -1)
+		}
+
+		maxDist := 1
+		if !piece.hasMoved && colDiff == 0 {
+			maxDist = 2
+		}
+
+		return ((piece.color == WHITE && rowDiff <= maxDist && rowDiff > 0) ||
+				(piece.color == BLACK && rowDiff >= -maxDist && rowDiff < 0)) &&
+				!PathHasObstacle(board, piece.row, piece.col, endRow, endCol)
 	}
 
 	return true
+}
+
+func PathHasObstacle(board [8][8]*Piece, row int, col int,
+					 endRow int, endCol int) bool {
+	for (row != endRow || col != endCol) {
+		if (board[row][col] != nil) {
+			return true
+		}
+		
+		row += copysign(1, endRow - row)
+		col += copysign(1, endCol - col)
+	}
+	return false
 }

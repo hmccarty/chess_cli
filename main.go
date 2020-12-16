@@ -51,7 +51,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 
 		switch gameUpdate.getType() {
 			case "gameFull":
-				game.board = createBoard()
+				game.Setup()
 				printBoard(game.board)
 			case "gameState":
 				switch gameUpdate.getGameStatus() {
@@ -80,7 +80,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 			//promptAction(engine)
 			//fmt.Println("\r\033[K\033[1A");
 		}
-		fmt.Println("\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\n")
+		//fmt.Println("\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\n")
 	}
 }
 

@@ -25,8 +25,8 @@ func printFooter(result string) {
 }
 
 func printBoard(board [8][8]*Piece) {
-		for i := 0; i < 8; i++ {
-			fmt.Printf("%d  ", 8 - i)
+		for i := 7; i >= 0; i-- {
+			fmt.Printf("%d  ", i + 1)
 			for j := 0; j < 8; j++ {
 				if board[i][j] == nil {
 					color.Unset()

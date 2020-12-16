@@ -29,6 +29,9 @@ func (engine *DefaultEngine) Setup(gameChannel chan DefaultGameMsg,
 
 	engine.gameChannel = gameChannel
 	engine.inputChannel = inputChannel
+
+	engine.game = &Game{}
+	engine.game.Setup()
 }
 
 func (engine *DefaultEngine) getUser() *DefaultUser {

@@ -6,3 +6,11 @@ func abs(val int) int {
 	}
 	return val
 }
+
+func copysign(mag int, sign int) int {
+	if ((sign < 0) && (mag > 0)) ||
+	   ((sign > 0) && (mag < 0)) {
+		return mag * -1
+	}
+	return mag
+}
