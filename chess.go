@@ -90,7 +90,7 @@ func (game *Game) MakeMove(from uint64, to uint64) {
 		*color = quietMove(from, to, *color)
 	}
 	game.board[EMPTY] = game.FindEmptySpaces()
-	fmt.Println(game.GetKingMoves(WHITE))
+	fmt.Println(game.GetKnightMoves(WHITE))
 }
 
 func (game *Game) FindEmptySpaces() uint64 {
@@ -166,7 +166,12 @@ func (game *Game) GetKingMoves(color Color) uint64 {
 }
 
 func (game *Game) GetKnightMoves(color Color) uint64 {
-	return 0
+	var knight uint64 = game.board[KNIGHT] & game.color[color] // & bitscan()
+	var pieces uint64 = (knight << 17) | (knight << 15)
+	pieces |= (knight << 10) | (knight >> 6)
+	pieces |= (knight << 6) | (knight >> 10)
+	pieces |= (knight >> 15) | (knight >> 17)
+	return pieces & (^game.color[color])
 }
 
 func (game *Game) GetRookMoves(color Color) uint64 {
@@ -192,6 +197,10 @@ func moveWest(board uint64) uint64 {return board << 1}
 
 func quietMove(from uint64, to uint64, board uint64) uint64 {
 	return board ^ (from ^ to)
+}
+
+func capture(from uint64, to uint64, board uint64) uint64 {
+	return 0
 }
 
 func decodePosition(row uint8, col uint8) uint64 {
