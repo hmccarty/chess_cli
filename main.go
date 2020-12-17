@@ -52,7 +52,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 		switch gameUpdate.getType() {
 			case "gameFull":
 				game.Setup()
-				printBoard(game.board)
+				printBoard(game.board, game.color)
 			case "gameState":
 				switch gameUpdate.getGameStatus() {
 					case "aborted", "resign", "timeout", "mate", "nostart":
@@ -60,7 +60,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 						from, to, _ := game.ProcessMove(move) 
 						game.MakeMove(from, to)
 						//printHeader(game.numMoves)
-						printBoard(game.board)
+						printBoard(game.board, game.color)
 						//printFooter(gameUpdate.getWinner() + " wins!")
 						return
 					case "stalemate":
@@ -71,7 +71,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 						from, to, _ := game.ProcessMove(move) 
 						game.MakeMove(from, to)
 						//printHeader(game.numMoves)
-						printBoard(game.board)
+						printBoard(game.board, game.color)
 				}
 			case "chatLine":
 		}

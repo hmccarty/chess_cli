@@ -5,7 +5,7 @@ import (
 	"github.com/fatih/color"
 )
 
-var pieceToChar = [9]string{"K", "Q", "R", "B", "N", "p", "Error", "Error", "X"}
+var pieceToChar = [7]string{"K", "Q", "R", "B", "N", "p", "X"}
 
 func printHeader(moveNum int) {
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
@@ -26,16 +26,16 @@ func printFooter(result string) {
 	fmt.Printf("%s\n", result)
 }
 
-func printBoard(board [9]uint64) {
+func printBoard(board [7]uint64, pieceColor [2]uint64) {
 		for i := uint8(8); i > 0; i-- {
 			fmt.Printf("%d  ", i)
 			for j := uint8(0); j < 8; j++ {
 				var pos uint8 = (i * 8) - j - 1
 
-				if (((board[WHITE] >> pos) & 1) == 1) {
+				if (((pieceColor[WHITE] >> pos) & 1) == 1) {
 					// Print white pieces if they exist on given square
 					color.Set(color.FgBlue)
-				} else if (((board[BLACK] >> pos) & 1) == 1) {
+				} else if (((pieceColor[BLACK] >> pos) & 1) == 1) {
 					// Print black pieces if they exist on given square
 					color.Set(color.FgRed)
 				}
@@ -49,7 +49,7 @@ func printBoard(board [9]uint64) {
 		fmt.Println("   A  B  C  D  E  F  G  H ")
 }
 
-func printPiece(board [9]uint64, pos uint8) {
+func printPiece(board [7]uint64, pos uint8) {
 	for pieceType, piece := range board {
 		if ((piece >> pos) & 1 == 1) {
 			fmt.Printf("%s  ", pieceToChar[pieceType])
