@@ -51,8 +51,8 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	for {
 		move := <- engine.inputChannel
 		fmt.Printf("Received move: %s\n", move)
-		var from, to, err uint64 = game.ProcessMove(move) 
-		game.MakeMove(from, to)
+		from, to, _ := engine.game.ProcessMove(move) 
+		engine.game.MakeMove(from, to)
 
 		gameMsg := DefaultGameMsg{}
 		gameMsg.msgType = "gameState"

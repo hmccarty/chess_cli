@@ -1,27 +1,28 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 )
 
 const ASCII_ROW_OFFSET = 49
 const ASCII_COL_OFFSET = 96
 
 // Enum to define piece classes (or types)
-type PieceType int
+type BoardType uint8
 const (
-	KING PieceType = iota
+	KING BoardType = iota
 	QUEEN
 	ROOK
 	BISHOP
 	KNIGHT
 	PAWN
+	WHITE
+	BLACK
+	EMPTY
 )
 
 type Game struct {
-	whiteBoard [6]uint64
-	blackBoard [6]uint64
-	emptyBoard uint64
+	board [9]uint64
 }
 
 func (game *Game) Setup() {
@@ -30,32 +31,41 @@ func (game *Game) Setup() {
 	// the bitmap
 
 	// Add kings on 5th file
-	game.whiteBoard[KING] = 0x08
-	game.blackBoard[KING] = 0x08 << 56
+	game.board[WHITE] |= 0x08
+	game.board[BLACK] |= 0x08 << 56
+	game.board[KING] = 0x08 | (0x08 << 56)
 
 	// Add queens on 4th file
-	game.whiteBoard[QUEEN] = 0x10
-	game.blackBoard[QUEEN] = 0x10 << 56
+	game.board[WHITE] |= 0x10
+	game.board[BLACK] |= 0x10 << 56
+	game.board[QUEEN] = 0x10 | (0x10 << 56)
 
 	// Add rooks on 1st and 8th file
-	game.whiteBoard[ROOK] = 0x81
-	game.blackBoard[ROOK] = 0x81 << 56
+	game.board[WHITE] |= 0x81
+	game.board[BLACK] |= 0x81 << 56
+	game.board[ROOK] = 0x81 | (0x81 << 56)
 
 	// Add bishops on 2nd and 7th file
-	game.whiteBoard[KNIGHT] = 0x42
-	game.blackBoard[KNIGHT] = 0x42 << 56
+	game.board[WHITE] |= 0x42
+	game.board[BLACK] |= 0x42 << 56
+	game.board[BISHOP] = 0x42 | (0x42 << 56)
 
 	// Add knights on 3rd and 6th file
-	game.whiteBoard[BISHOP] = 0x24
-	game.blackBoard[BISHOP] = 0x24 << 56
+	game.board[WHITE] |= 0x24
+	game.board[BLACK] |= 0x24 << 56
+	game.board[KNIGHT] = 0x24 | (0x24 << 56)
 
 	// Add pawns on 2nd and 7th file
-	game.whiteBoard[PAWN] = 0xFF << 8
-	game.blackBoard[PAWN] = 0xFF << 48
+	game.board[WHITE] |= 0xFF << 8
+	game.board[BLACK] |= 0xFF << 48
+	game.board[PAWN] = (0xFF << 8) | (0xFF << 48)
+
+	// Track all open squares
+	game.board[EMPTY] = game.FindEmptySpaces()
 }
 
-func (game *Game) ProcessMove(move string) uint64, uint64, error {
-	moveData := []byte(moveString)
+func (game *Game) ProcessMove(move string) (uint64, uint64, error) {
+	moveData := []byte(move)
 	startCol := uint8(8 - (moveData[0] - ASCII_COL_OFFSET))
 	startRow := uint8(moveData[1] - ASCII_ROW_OFFSET)
 	endCol := uint8(8 - (moveData[2] - ASCII_COL_OFFSET))
@@ -70,34 +80,32 @@ func (game *Game) MakeMove(from uint64, to uint64) {
 	// If not capturing any pieces
 	if ((to & game.FindEmptySpaces()) != 0) {
 		var board *uint64 = game.FindBoard(from)
+		var color *uint64 = &game.board[game.FindColor(from)]
 		*board = quietMove(from, to, *board)
+		*color = quietMove(from, to, *color)
 	}
-	game.emptyBoard = game.FindEmptySpaces()
+	game.board[EMPTY] = game.FindEmptySpaces()
 }
 
 func (game *Game) FindEmptySpaces() uint64 {
-	var empty uint64 = 0
-	for _, piece := range game.whiteBoard {
-		empty |= piece
-	}
-	for _, piece := range game.blackBoard {
-		empty |= piece
-	}
-	return ^empty
+	return ^(game.board[WHITE] & game.board[BLACK])
 }
 
 func (game *Game) FindBoard(pos uint64) *uint64 {
-	for idx, piece := range game.whiteBoard {
+	for idx, piece := range game.board {
 		if ((piece & pos) != 0) {
-			return &(game.whiteBoard[idx])
-		}
-	}
-	for idx, piece := range game.blackBoard {
-		if ((piece & pos) != 0) {
-			return &(game.blackBoard[idx])
+			return &(game.board[idx])
 		}
 	}
 	return nil
+}
+
+func (game *Game) FindColor(pos uint64) BoardType {
+	if ((game.board[WHITE] & pos) != 0) {
+		return WHITE
+	} else {
+		return BLACK
+	}
 }
 
 func moveNWest(piece int, board [6]uint64) uint64 {return board[piece] << 9}
@@ -114,8 +122,5 @@ func quietMove(from uint64, to uint64, board uint64) uint64 {
 }
 
 func decodePosition(row uint8, col uint8) uint64 {
-	fmt.Println(row)
-	// fmt.Println(col)
-	// fmt.Println((8 * row) + col)
 	return 0x1 << ((uint64(row) << 3) | uint64(col))
 }
