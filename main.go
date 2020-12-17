@@ -44,7 +44,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 				wg *sync.WaitGroup) {
 	defer wg.Done()
 	game := Game{}
-	userColor := WHITE
+	// userColor := WHITE
 
 	for {
 		gameUpdate := <-gameChannel
@@ -52,23 +52,23 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 		switch gameUpdate.getType() {
 			case "gameFull":
 				game.Setup()
-				printBoard(game.board)
-			case "gameState":
-				switch gameUpdate.getGameStatus() {
-					case "aborted", "resign", "timeout", "mate", "nostart":
-						game.AddNewMove(gameUpdate.getCurrMove())
-						printHeader(game.numMoves)
-						printBoard(game.board)
-						printFooter(gameUpdate.getWinner() + " wins!")
-						return
-					case "stalemate":
-						printFooter("Stalemate!")
-						return
-					default:
-						game.AddNewMove(gameUpdate.getCurrMove())
-						printHeader(game.numMoves)
-						printBoard(game.board)
-				}
+				printBoard(game.whiteBoard, game.blackBoard)
+			// case "gameState":
+			// 	switch gameUpdate.getGameStatus() {
+			// 		case "aborted", "resign", "timeout", "mate", "nostart":
+			// 			game.AddNewMove(gameUpdate.getCurrMove())
+			// 			printHeader(game.numMoves)
+			// 			printBoard(game.board)
+			// 			printFooter(gameUpdate.getWinner() + " wins!")
+			// 			return
+			// 		case "stalemate":
+			// 			printFooter("Stalemate!")
+			// 			return
+			// 		default:
+			// 			game.AddNewMove(gameUpdate.getCurrMove())
+			// 			printHeader(game.numMoves)
+			// 			printBoard(game.board)
+			//	}
 			case "chatLine":
 		}
 
@@ -76,10 +76,10 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		inputChannel <- response
-		if game.turnColor == userColor {
+		// if game.turnColor == userColor {
 			//promptAction(engine)
 			//fmt.Println("\r\033[K\033[1A");
-		}
+		// }
 		//fmt.Println("\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\n")
 	}
 }

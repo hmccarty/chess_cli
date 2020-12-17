@@ -5,6 +5,8 @@ import (
 	"github.com/fatih/color"
 )
 
+var pieceToChar = [6]string{"K", "Q", "R", "B", "N", "p",}
+
 func printHeader(moveNum int) {
 	fmt.Println("~~~~~~~~~~~~~~~~~~~~")
 	
@@ -24,26 +26,42 @@ func printFooter(result string) {
 	fmt.Printf("%s\n", result)
 }
 
-func printBoard(board [8][8]*Piece) {
-		for i := 7; i >= 0; i-- {
+func printBoard(whiteBoard [6]uint64, blackBoard [6]uint64) {
+		for i := uint8(8); i > 0; i-- {
 			fmt.Printf("%d  ", i + 1)
-			for j := 0; j < 8; j++ {
-				if board[i][j] == nil {
-					color.Unset()
-				} else if board[i][j].color == WHITE {
-					color.Set(color.FgBlue)
-				} else if board[i][j].color == BLACK {
-					color.Set(color.FgRed)
+			for j := uint8(0); j < 8; j++ {
+				var pos uint8 = (i * 8) - j - 1
+
+				// Print white pieces if they exist on given square
+				color.Set(color.FgBlue)
+				piecePrinted := printPiece(whiteBoard, pos)
+				if (piecePrinted) {
+					continue
 				}
 
-				if board[i][j] == nil {
-					fmt.Printf("X  ")
-				} else {
-					fmt.Printf("%s  ", pieceToChar[board[i][j].class])
+				// Print black pieces if they exist on given square
+				color.Set(color.FgRed)
+				piecePrinted = printPiece(blackBoard, pos)
+				if (piecePrinted) {
+					continue
 				}
+
+				// Print an empty square if nothing previously printed
+				color.Unset()
+				fmt.Printf("X  ")
 			}
 			color.Unset()
 			fmt.Println()
 		}
 		fmt.Println("   A  B  C  D  E  F  G  H ")
+}
+
+func printPiece(board [6]uint64, pos uint8) bool {
+	for pieceType, piece := range board {
+		if ((piece >> pos) & 1 == 1) {
+			fmt.Printf("%s  ", pieceToChar[pieceType])
+			return true
+		}
+	}
+	return false
 }

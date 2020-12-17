@@ -2,7 +2,7 @@ package main
 
 import (
 	"sync"
-	"fmt"
+	//"fmt"
 )
 
 type DefaultEngine struct {
@@ -48,16 +48,16 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	gameMsg.msgType = "gameFull"
 	engine.gameChannel <- gameMsg
 
-	for {
-		move := <- engine.inputChannel
-		fmt.Printf("Received move: %s\n", move)
-		engine.game.AddNewMove(move)
+	// for {
+	// 	move := <- engine.inputChannel
+	// 	fmt.Printf("Received move: %s\n", move)
+	// 	engine.game.AddNewMove(move)
 
-		gameMsg := DefaultGameMsg{}
-		gameMsg.msgType = "gameState"
-		gameMsg.currMove = move
-		engine.gameChannel <- gameMsg
-	}
+	// 	gameMsg := DefaultGameMsg{}
+	// 	gameMsg.msgType = "gameState"
+	// 	gameMsg.currMove = move
+	// 	engine.gameChannel <- gameMsg
+	// }
 }
 
 func (gameMsg *DefaultGameMsg) getType() string {
