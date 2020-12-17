@@ -53,22 +53,26 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 			case "gameFull":
 				game.Setup()
 				printBoard(game.whiteBoard, game.blackBoard)
-			// case "gameState":
-			// 	switch gameUpdate.getGameStatus() {
-			// 		case "aborted", "resign", "timeout", "mate", "nostart":
-			// 			game.AddNewMove(gameUpdate.getCurrMove())
-			// 			printHeader(game.numMoves)
-			// 			printBoard(game.board)
-			// 			printFooter(gameUpdate.getWinner() + " wins!")
-			// 			return
-			// 		case "stalemate":
-			// 			printFooter("Stalemate!")
-			// 			return
-			// 		default:
-			// 			game.AddNewMove(gameUpdate.getCurrMove())
-			// 			printHeader(game.numMoves)
-			// 			printBoard(game.board)
-			//	}
+			case "gameState":
+				switch gameUpdate.getGameStatus() {
+					case "aborted", "resign", "timeout", "mate", "nostart":
+						var move string = gameUpdate.getCurrMove()
+						var from, to, err uint64 = game.ProcessMove(move) 
+						game.MakeMove(from, to)
+						//printHeader(game.numMoves)
+						printBoard(game.whiteBoard, game.blackBoard)
+						//printFooter(gameUpdate.getWinner() + " wins!")
+						return
+					case "stalemate":
+						printFooter("Stalemate!")
+						return
+					default:
+						var move string = gameUpdate.getCurrMove()
+						var from, to, err uint64 = game.ProcessMove(move) 
+						game.MakeMove(from, to)
+						//printHeader(game.numMoves)
+						printBoard(game.whiteBoard, game.blackBoard)
+				}
 			case "chatLine":
 		}
 

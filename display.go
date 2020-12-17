@@ -28,7 +28,7 @@ func printFooter(result string) {
 
 func printBoard(whiteBoard [6]uint64, blackBoard [6]uint64) {
 		for i := uint8(8); i > 0; i-- {
-			fmt.Printf("%d  ", i + 1)
+			fmt.Printf("%d  ", i)
 			for j := uint8(0); j < 8; j++ {
 				var pos uint8 = (i * 8) - j - 1
 
