@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 )
 
 const ASCII_ROW_OFFSET = 49
@@ -90,6 +90,7 @@ func (game *Game) MakeMove(from uint64, to uint64) {
 		*color = quietMove(from, to, *color)
 	}
 	game.board[EMPTY] = game.FindEmptySpaces()
+	fmt.Println(game.GetKingMoves(WHITE))
 }
 
 func (game *Game) FindEmptySpaces() uint64 {
@@ -111,6 +112,73 @@ func (game *Game) FindColor(pos uint64) Color {
 	} else {
 		return BLACK
 	}
+}
+
+func (game *Game) GetPushPawns(color Color) uint64 {
+	var pieces uint64 = game.board[PAWN] & game.color[color]
+	if (color == WHITE) {
+		pieces &= moveSouth(game.board[EMPTY])
+	} else {
+		pieces &= moveNorth(game.board[EMPTY])
+	}
+	return pieces
+}
+
+func (game *Game) GetDblPushPawns(color Color) uint64 {
+	var pieces uint64 = game.GetPushPawns(color) & game.color[color]
+	if (color == WHITE) {
+		pieces &= (0xFF << 8)
+		pieces &= moveSouth(moveSouth(game.board[EMPTY]))
+	} else {
+		pieces &= (0xFF << 48)
+		pieces &= moveNorth(moveNorth(game.board[EMPTY]))
+	}
+	return pieces
+}
+
+func (game *Game) GetEastAttackPawns(color Color) uint64 {
+	var pieces uint64 = game.board[PAWN] & game.color[color]
+	if (color == WHITE) {
+		pieces &= moveSWest(game.color[BLACK])
+	} else {
+		pieces &= moveNEast(game.color[WHITE])
+	}
+	return pieces
+}
+
+func (game *Game) GetWestAttackPawns(color Color) uint64 {
+	var pieces uint64 = game.board[PAWN] & game.color[color]
+	if (color == WHITE) {
+		pieces &= moveSEast(game.color[BLACK])
+	} else {
+		pieces &= moveNWest(game.color[WHITE])
+	}
+	return pieces
+}
+
+func (game *Game) GetKingMoves(color Color) uint64 {
+	var king uint64 = game.board[KING] & game.color[color]
+	var pieces uint64 = moveNorth(king) | moveSouth(king)
+	pieces |= moveEast(king) | moveWest(king)
+	pieces |= moveNEast(king) | moveNWest(king)
+	pieces |= moveSEast(king) | moveSWest(king)
+	return pieces & (^game.color[color])
+}
+
+func (game *Game) GetKnightMoves(color Color) uint64 {
+	return 0
+}
+
+func (game *Game) GetRookMoves(color Color) uint64 {
+	return 0
+}
+
+func (game *Game) GetBishopMoves(color Color) uint64 {
+	return 0
+}
+
+func (game *Game) GetQueenMoves(color Color) uint64 {
+	return 0
 }
 
 func moveNWest(board uint64) uint64 {return board << 9}
