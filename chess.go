@@ -7,6 +7,9 @@ import (
 const ASCII_ROW_OFFSET = 49
 const ASCII_COL_OFFSET = 96
 
+const notAFile = 0x7f7f7f7f7f7f7f7f
+const notHFile = 0xfefefefefefefefe
+
 // Enum to define piece classes (or types)
 type BoardType uint8
 const (
@@ -94,7 +97,7 @@ func (game *Game) MakeMove(from uint64, to uint64) {
 }
 
 func (game *Game) FindEmptySpaces() uint64 {
-	return ^(game.color[WHITE] & game.color[BLACK])
+	return ^(game.color[WHITE] | game.color[BLACK])
 }
 
 func (game *Game) FindBoard(pos uint64) *uint64 {
@@ -167,10 +170,10 @@ func (game *Game) GetKingMoves(color Color) uint64 {
 
 func (game *Game) GetKnightMoves(color Color) uint64 {
 	var knight uint64 = game.board[KNIGHT] & game.color[color] // & bitscan()
-	var pieces uint64 = (knight << 17) | (knight << 15)
-	pieces |= (knight << 10) | (knight >> 6)
-	pieces |= (knight << 6) | (knight >> 10)
-	pieces |= (knight >> 15) | (knight >> 17)
+	var pieces uint64 = moveNorth(moveNEast(knight) | moveNWest(knight))
+	pieces |= moveEast(moveNEast(knight) | moveSEast(knight))
+	pieces |= moveWest(moveNWest(knight) | moveSWest(knight))
+	pieces |= moveSouth(moveSEast(knight) | moveSWest(knight))
 	return pieces & (^game.color[color])
 }
 
@@ -186,14 +189,14 @@ func (game *Game) GetQueenMoves(color Color) uint64 {
 	return 0
 }
 
-func moveNWest(board uint64) uint64 {return board << 9}
+func moveNWest(board uint64) uint64 {return (board << 9) & notHFile}
 func moveNorth(board uint64) uint64 {return board << 8}
-func moveNEast(board uint64) uint64 {return board << 7}
-func moveEast(board uint64) uint64 {return board >> 1}
-func moveSEast(board uint64) uint64 {return board >> 9}
+func moveNEast(board uint64) uint64 {return (board << 7) & notAFile}
+func moveEast(board uint64) uint64 {return (board >> 1) & notAFile}
+func moveSEast(board uint64) uint64 {return (board >> 9) & notAFile}
 func moveSouth(board uint64) uint64 {return board >> 8}
-func moveSWest(board uint64) uint64 {return board >> 7}
-func moveWest(board uint64) uint64 {return board << 1}
+func moveSWest(board uint64) uint64 {return (board >> 7) & notHFile}
+func moveWest(board uint64) uint64 {return (board << 1) & notHFile}
 
 func quietMove(from uint64, to uint64, board uint64) uint64 {
 	return board ^ (from ^ to)
