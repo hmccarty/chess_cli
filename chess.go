@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
+	"errors"
 )
 
 const ASCII_ROW_OFFSET = 49
@@ -10,10 +11,10 @@ const ASCII_COL_OFFSET = 96
 const notAFile = 0x7f7f7f7f7f7f7f7f
 const notHFile = 0xfefefefefefefefe
 
-// Enum to define piece classes (or types)
-type BoardType uint8
+// Enum to define board types
+type Board uint8
 const (
-	KING BoardType = iota
+	KING Board = iota
 	QUEEN
 	ROOK
 	BISHOP
@@ -21,6 +22,16 @@ const (
 	PAWN
 	EMPTY
 )
+
+var boardToPoints = map[Board]uint8 {
+	KING   : 0,
+	QUEEN  : 9,
+	ROOK   : 5,
+	BISHOP : 3,
+	KNIGHT : 3,
+	PAWN   : 1,
+	EMPTY  : 0,
+}
 
 type Color uint8
 const (
@@ -43,6 +54,7 @@ const (
 type Game struct {
 	board [7]uint64
 	color [2]uint64
+	points [2]uint8
 	rayAttacks [64][8]uint64
 }
 
@@ -133,40 +145,94 @@ func (game *Game) Setup() {
 }
 
 func (game *Game) ProcessMove(move string) (uint64, uint64, error) {
-	moveData := []byte(move)
-	startCol := uint8(8 - (moveData[0] - ASCII_COL_OFFSET))
-	startRow := uint8(moveData[1] - ASCII_ROW_OFFSET)
-	endCol := uint8(8 - (moveData[2] - ASCII_COL_OFFSET))
-	endRow := uint8(moveData[3] - ASCII_ROW_OFFSET)
+	var moveData []byte = []byte(move)
+	var startCol uint8 = 8 - (moveData[0] - ASCII_COL_OFFSET)
+	var startRow uint8 = moveData[1] - ASCII_ROW_OFFSET
+	var endCol uint8 = 8 - (moveData[2] - ASCII_COL_OFFSET)
+	var endRow uint8 = moveData[3] - ASCII_ROW_OFFSET
+	var sqr uint8 = (startRow * 8) + startCol
 
 	var from uint64 = decodePosition(startRow, startCol)
 	var to uint64 = decodePosition(endRow, endCol)
+
+	var board Board = game.FindBoard(from)
+	var color Color = game.FindColor(from)
+	switch board {
+	case KING:
+		if ((to & game.GetKingMoves(color)) == 0) {
+			return 0, 0, errors.New("Invalid king move.")
+		}
+	case QUEEN:
+		if ((to & game.GetQueenMoves(color)) == 0) {
+			return 0, 0, errors.New("Invalid queen move.")
+		}
+	case ROOK:
+		if ((to & game.GetRookMoves(sqr, color)) == 0) {
+			return 0, 0, errors.New("Invalid rook move.")
+		}
+	case BISHOP:
+		if ((to & game.GetBishopMoves(sqr, color)) == 0) {
+			return 0, 0, errors.New("Invalid bishop move.")
+		}
+	case KNIGHT:
+		if ((to & game.GetKnightMoves(sqr, color)) == 0) {
+			return 0, 0, errors.New("Invalid knight move.")
+		}
+	case PAWN:
+		if ((to & game.GetPawnMoves(sqr, color)) == 0) {
+			return 0, 0, errors.New("Invalid pawn move.")
+		}
+	case EMPTY:
+		return 0, 0, errors.New("Piece doesn't exist at square.")
+	}
 	return from, to, nil
 }
 
 func (game *Game) MakeMove(from uint64, to uint64) {
 	// If not capturing any pieces
 	if ((to & game.FindEmptySpaces()) != 0) {
-		var board *uint64 = game.FindBoard(from)
-		var color *uint64 = &game.color[game.FindColor(from)]
-		*board = quietMove(from, to, *board)
-		*color = quietMove(from, to, *color)
+		game.QuietMove(from, to)
+	} else {
+		game.Capture(from, to)
 	}
 	game.board[EMPTY] = game.FindEmptySpaces()
-	printRawBitBoard(game.GetQueenMoves(WHITE))
+}
+
+func (game *Game) QuietMove(from uint64, to uint64) {
+	var board Board = game.FindBoard(from)
+	var color Color = game.FindColor(from)
+	game.board[board] ^= (from ^ to)
+	game.color[color] ^= (from ^ to)
+}
+
+func (game *Game) Capture(from uint64, to uint64) {
+	// Remove attacked piece
+	var toBoard Board = game.FindBoard(to)
+	var toColor Color = game.FindColor(to)
+	game.board[toBoard] ^= to
+	game.color[toColor] ^= to
+
+	// Move piece on attacking board
+	var fromBoard Board = game.FindBoard(from)
+	var fromColor Color = game.FindColor(from)
+	game.board[fromBoard] ^= (from ^ to)
+	game.color[fromColor] ^= (from ^ to)
+
+	// Update point totals
+	game.points[fromColor] += boardToPoints[toBoard]
 }
 
 func (game *Game) FindEmptySpaces() uint64 {
 	return ^(game.color[WHITE] | game.color[BLACK])
 }
 
-func (game *Game) FindBoard(pos uint64) *uint64 {
+func (game *Game) FindBoard(pos uint64) Board {
 	for idx, piece := range game.board {
 		if ((piece & pos) != 0) {
-			return &(game.board[idx])
+			return Board(idx)
 		}
 	}
-	return nil
+	return EMPTY
 }
 
 func (game *Game) FindColor(pos uint64) Color {
@@ -175,48 +241,6 @@ func (game *Game) FindColor(pos uint64) Color {
 	} else {
 		return BLACK
 	}
-}
-
-func (game *Game) GetPushPawns(color Color) uint64 {
-	var pieces uint64 = game.board[PAWN] & game.color[color]
-	if (color == WHITE) {
-		pieces &= moveSouth(game.board[EMPTY])
-	} else {
-		pieces &= moveNorth(game.board[EMPTY])
-	}
-	return pieces
-}
-
-func (game *Game) GetDblPushPawns(color Color) uint64 {
-	var pieces uint64 = game.GetPushPawns(color) & game.color[color]
-	if (color == WHITE) {
-		pieces &= (0xFF << 8)
-		pieces &= moveSouth(moveSouth(game.board[EMPTY]))
-	} else {
-		pieces &= (0xFF << 48)
-		pieces &= moveNorth(moveNorth(game.board[EMPTY]))
-	}
-	return pieces
-}
-
-func (game *Game) GetEastAttackPawns(color Color) uint64 {
-	var pieces uint64 = game.board[PAWN] & game.color[color]
-	if (color == WHITE) {
-		pieces &= moveSWest(game.color[BLACK])
-	} else {
-		pieces &= moveNEast(game.color[WHITE])
-	}
-	return pieces
-}
-
-func (game *Game) GetWestAttackPawns(color Color) uint64 {
-	var pieces uint64 = game.board[PAWN] & game.color[color]
-	if (color == WHITE) {
-		pieces &= moveSEast(game.color[BLACK])
-	} else {
-		pieces &= moveNWest(game.color[WHITE])
-	}
-	return pieces
 }
 
 func (game *Game) GetKingMoves(color Color) uint64 {
@@ -247,9 +271,34 @@ func (game *Game) GetBishopMoves(sqr uint8, color Color) uint64 {
 
 func (game *Game) GetQueenMoves(color Color) uint64 {
 	var sqr uint8 = bitScanForward(game.board[QUEEN] & game.color[color])
-	fmt.Println(sqr)
 	var moves uint64 = game.GetTransMoves(sqr) | game.GetDiagMoves(sqr)
 	return moves & (^game.color[color])
+}
+
+func (game *Game) GetPawnMoves(sqr uint8, color Color) uint64 {
+	var pawn uint64 = game.board[PAWN] & (1 << sqr)
+	var moves uint64 = 0
+	if (color == WHITE) {
+		// Check for single push
+		moves |= (moveNorth(pawn) & game.board[EMPTY])
+		// Check for double push
+		moves |= ((0xFF << 24) & moveNorth(moves) & game.board[EMPTY])
+		// Check for north-east attack
+		moves |= (moveNEast(pawn) & game.color[BLACK])
+		// Check for north-west attack
+		moves |= (moveNWest(pawn) & game.color[BLACK])
+	} else {
+		// Check for single push
+		moves |= (moveSouth(pawn) & game.board[EMPTY])
+		// Check for double push
+		moves |= ((0xFF << 32) & moveSouth(moves) & game.board[EMPTY])
+		// Check for south-east attack
+		moves |= (moveSEast(pawn) & game.color[WHITE])
+		// Check for south-west attack
+		moves |= (moveSWest(pawn) & game.color[WHITE])
+	}
+
+	return moves
 }
 
 func (game *Game) GetTransMoves(sqr uint8) uint64 {
@@ -290,14 +339,6 @@ func moveSEast(board uint64) uint64 {return (board >> 9) & notAFile}
 func moveSouth(board uint64) uint64 {return board >> 8}
 func moveSWest(board uint64) uint64 {return (board >> 7) & notHFile}
 func moveWest(board uint64) uint64 {return (board << 1) & notHFile}
-
-func quietMove(from uint64, to uint64, board uint64) uint64 {
-	return board ^ (from ^ to)
-}
-
-func capture(from uint64, to uint64, board uint64) uint64 {
-	return 0
-}
 
 func decodePosition(row uint8, col uint8) uint64 {
 	return 0x1 << ((uint64(row) << 3) | uint64(col))

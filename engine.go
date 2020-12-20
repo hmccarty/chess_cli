@@ -2,7 +2,7 @@ package main
 
 import (
 	"sync"
-	//"fmt"
+	"fmt"
 )
 
 type DefaultEngine struct {
@@ -53,7 +53,10 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 
 	for {
 		move := <- engine.inputChannel
-		from, to, _ := engine.game.ProcessMove(move) 
+		from, to, err := engine.game.ProcessMove(move)
+		if err != nil {
+			fmt.Println(err)
+		}
 		engine.game.MakeMove(from, to)
 
 		printBoard(engine.game.board, engine.game.color)
