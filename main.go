@@ -43,7 +43,7 @@ func main() {
 func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 				wg *sync.WaitGroup) {
 	defer wg.Done()
-	game := Game{}
+	// game := Game{}
 	// userColor := WHITE
 
 	for {
@@ -51,27 +51,27 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 
 		switch gameUpdate.getType() {
 			case "gameFull":
-				game.Setup()
-				printBoard(game.board, game.color)
+				//game.Setup()
+				//printBoard(game.board, game.color)
 			case "gameState":
 				switch gameUpdate.getGameStatus() {
 					case "aborted", "resign", "timeout", "mate", "nostart":
-						var move string = gameUpdate.getCurrMove()
-						from, to, _ := game.ProcessMove(move) 
-						game.MakeMove(from, to)
-						//printHeader(game.numMoves)
-						printBoard(game.board, game.color)
-						//printFooter(gameUpdate.getWinner() + " wins!")
+						// var move string = gameUpdate.getCurrMove()
+						// from, to, _ := game.ProcessMove(move) 
+						// game.MakeMove(from, to)
+						// //printHeader(game.numMoves)
+						// printBoard(game.board, game.color)
+						// //printFooter(gameUpdate.getWinner() + " wins!")
 						return
 					case "stalemate":
 						printFooter("Stalemate!")
 						return
 					default:
-						var move string = gameUpdate.getCurrMove()
-						from, to, _ := game.ProcessMove(move) 
-						game.MakeMove(from, to)
-						//printHeader(game.numMoves)
-						printBoard(game.board, game.color)
+						// var move string = gameUpdate.getCurrMove()
+						// from, to, _ := game.ProcessMove(move) 
+						// game.MakeMove(from, to)
+						// //printHeader(game.numMoves)
+						// printBoard(game.board, game.color)
 				}
 			case "chatLine":
 		}

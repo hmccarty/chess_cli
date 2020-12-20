@@ -28,9 +28,22 @@ const (
 	BLACK
 )
 
+type RayDirections uint8
+const (
+	NORTH RayDirections = iota
+	NORTH_EAST
+	EAST
+	SOUTH_EAST
+	SOUTH
+	SOUTH_WEST
+	WEST
+	NORTH_WEST
+)
+
 type Game struct {
 	board [7]uint64
 	color [2]uint64
+	rayAttacks [64][8]uint64
 }
 
 func (game *Game) Setup() {
@@ -53,15 +66,15 @@ func (game *Game) Setup() {
 	game.color [BLACK] |= 0x81 << 56
 	game.board[ROOK] = 0x81 | (0x81 << 56)
 
-	// Add bishops on 2nd and 7th file
+	// Add knights on 2nd and 7th file
 	game.color [WHITE] |= 0x42
 	game.color [BLACK] |= 0x42 << 56
-	game.board[BISHOP] = 0x42 | (0x42 << 56)
+	game.board[KNIGHT] = 0x42 | (0x42 << 56)
 
-	// Add knights on 3rd and 6th file
+	// Add bishop on 3rd and 6th file
 	game.color [WHITE] |= 0x24
 	game.color [BLACK] |= 0x24 << 56
-	game.board[KNIGHT] = 0x24 | (0x24 << 56)
+	game.board[BISHOP] = 0x24 | (0x24 << 56)
 
 	// Add pawns on 2nd and 7th file
 	game.color [WHITE] |= 0xFF << 8
@@ -70,6 +83,53 @@ func (game *Game) Setup() {
 
 	// Track all open squares
 	game.board[EMPTY] = game.FindEmptySpaces()
+
+	// Calculate ray attacks
+	// TODO: Find a more elegant approach to ray-move calculation
+	for i, _ := range game.rayAttacks {
+		row := i / 8
+		col := i % 8  
+		
+		// Calculate north ray attacks
+		for j := 8; j > row; j-- {
+			game.rayAttacks[i][NORTH] = moveNorth((1 << i) | game.rayAttacks[i][NORTH])
+		}
+
+		// Calculate north-east ray attacks
+		for j := 8; j > row; j-- {
+			game.rayAttacks[i][NORTH_EAST] = moveNEast((1 << i) | game.rayAttacks[i][NORTH_EAST])
+		}
+
+		// Calculate east ray attacks
+		for j := 0; j < col; j++ {
+			game.rayAttacks[i][EAST] = moveEast((1 << i) | game.rayAttacks[i][EAST])
+		}
+
+		// Calculate south-east ray attacks
+		for j := row; j > 0; j-- {
+			game.rayAttacks[i][SOUTH_EAST] = moveSEast((1 << i) | game.rayAttacks[i][SOUTH_EAST])
+		}
+
+		// Calculate south ray attacks
+		for j := row; j > 0; j-- {
+			game.rayAttacks[i][SOUTH] = moveSouth((1 << i) | game.rayAttacks[i][SOUTH])
+		}
+
+		// Calculate south-west ray attacks
+		for j := row; j > 0; j-- {
+			game.rayAttacks[i][SOUTH_WEST] = moveSWest((1 << i) | game.rayAttacks[i][SOUTH_WEST])
+		}
+
+		// Calculate west ray attacks
+		for j := col; j < 8; j++ {
+			game.rayAttacks[i][WEST] = moveWest((1 << i) | game.rayAttacks[i][WEST])
+		}
+
+		// Calculate north-west ray attacks
+		for j := 8; j > row; j-- {
+			game.rayAttacks[i][NORTH_WEST] = moveNWest((1 << i) | game.rayAttacks[i][NORTH_WEST])
+		}
+	}
 }
 
 func (game *Game) ProcessMove(move string) (uint64, uint64, error) {
@@ -93,7 +153,7 @@ func (game *Game) MakeMove(from uint64, to uint64) {
 		*color = quietMove(from, to, *color)
 	}
 	game.board[EMPTY] = game.FindEmptySpaces()
-	fmt.Println(game.GetKnightMoves(WHITE))
+	printRawBitBoard(game.GetQueenMoves(WHITE))
 }
 
 func (game *Game) FindEmptySpaces() uint64 {
@@ -161,32 +221,65 @@ func (game *Game) GetWestAttackPawns(color Color) uint64 {
 
 func (game *Game) GetKingMoves(color Color) uint64 {
 	var king uint64 = game.board[KING] & game.color[color]
-	var pieces uint64 = moveNorth(king) | moveSouth(king)
-	pieces |= moveEast(king) | moveWest(king)
-	pieces |= moveNEast(king) | moveNWest(king)
-	pieces |= moveSEast(king) | moveSWest(king)
-	return pieces & (^game.color[color])
+	var moves uint64 = moveNorth(king) | moveSouth(king)
+	moves |= moveEast(king) | moveWest(king)
+	moves |= moveNEast(king) | moveNWest(king)
+	moves |= moveSEast(king) | moveSWest(king)
+	return moves & (^game.color[color])
 }
 
-func (game *Game) GetKnightMoves(color Color) uint64 {
-	var knight uint64 = game.board[KNIGHT] & game.color[color] // & bitscan()
-	var pieces uint64 = moveNorth(moveNEast(knight) | moveNWest(knight))
-	pieces |= moveEast(moveNEast(knight) | moveSEast(knight))
-	pieces |= moveWest(moveNWest(knight) | moveSWest(knight))
-	pieces |= moveSouth(moveSEast(knight) | moveSWest(knight))
-	return pieces & (^game.color[color])
+func (game *Game) GetKnightMoves(sqr uint8, color Color) uint64 {
+	var knight uint64 = game.board[KNIGHT] & (1 << sqr)
+	var moves uint64 = moveNorth(moveNEast(knight) | moveNWest(knight))
+	moves |= moveEast(moveNEast(knight) | moveSEast(knight))
+	moves |= moveWest(moveNWest(knight) | moveSWest(knight))
+	moves |= moveSouth(moveSEast(knight) | moveSWest(knight))
+	return moves & (^game.color[color])
 }
 
-func (game *Game) GetRookMoves(color Color) uint64 {
-	return 0
+func (game *Game) GetRookMoves(sqr uint8, color Color) uint64 {
+	return game.GetTransMoves(sqr) & (^game.color[color])
 }
 
-func (game *Game) GetBishopMoves(color Color) uint64 {
-	return 0
+func (game *Game) GetBishopMoves(sqr uint8, color Color) uint64 {
+	return game.GetDiagMoves(sqr) & (^game.color[color])
 }
 
 func (game *Game) GetQueenMoves(color Color) uint64 {
-	return 0
+	var sqr uint8 = bitScanForward(game.board[QUEEN] & game.color[color])
+	fmt.Println(sqr)
+	var moves uint64 = game.GetTransMoves(sqr) | game.GetDiagMoves(sqr)
+	return moves & (^game.color[color])
+}
+
+func (game *Game) GetTransMoves(sqr uint8) uint64 {
+	var moves uint64 = game.GetPosRayAttacks(sqr, NORTH)
+	moves |= game.GetNegRayAttacks(sqr, EAST)
+	moves |= game.GetPosRayAttacks(sqr, WEST)
+	moves |= game.GetNegRayAttacks(sqr, SOUTH)
+	return moves
+}
+
+func (game *Game) GetDiagMoves(sqr uint8) uint64 {
+	var moves uint64 = game.GetPosRayAttacks(sqr, NORTH_EAST)
+	moves |= game.GetPosRayAttacks(sqr, NORTH_WEST)
+	moves |= game.GetNegRayAttacks(sqr, SOUTH_EAST)
+	moves |= game.GetNegRayAttacks(sqr, SOUTH_WEST)
+	return moves
+}
+
+func (game *Game) GetPosRayAttacks(sqr uint8, dir RayDirections) uint64 {
+	var attacks uint64 = game.rayAttacks[sqr][dir]
+	var blockers uint64 = attacks & (^game.board[EMPTY])
+	sqr = bitScanForward(blockers | (0x8000000000000000))
+	return attacks ^ game.rayAttacks[sqr][dir]
+}
+
+func (game *Game) GetNegRayAttacks(sqr uint8, dir RayDirections) uint64 {
+	var attacks uint64 = game.rayAttacks[sqr][dir]
+	var blockers uint64 = attacks & (^game.board[EMPTY])
+	sqr = bitScanReverse(blockers | 1)
+	return attacks ^ game.rayAttacks[sqr][dir]
 }
 
 func moveNWest(board uint64) uint64 {return (board << 9) & notHFile}

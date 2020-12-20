@@ -26,6 +26,13 @@ func printFooter(result string) {
 	fmt.Printf("%s\n", result)
 }
 
+func printRawBitBoard(board uint64) {
+	//fmt.Printf("%064b\n", board)
+	for i := 8; i > 0; i-- {
+	fmt.Printf("%08b\n", uint8(board >> (8 * (i - 1))))
+	}
+}
+
 func printBoard(board [7]uint64, pieceColor [2]uint64) {
 		for i := uint8(8); i > 0; i-- {
 			fmt.Printf("%d  ", i)
