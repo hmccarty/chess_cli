@@ -11,7 +11,9 @@ I wanted a quick CLI to play chess while waiting for build servers at work. For 
 moderately enough. Eventually however, I wanted to explore Deep RL networks, so I revamped this project to include a fully fledged engine.
 
 ## TODO
-- ~~Create basic board representation~~
-- ~~Add legal move generation~~
+- ~~Create board representation (bitboard)~~
+- ~~Add basic, legal move generation~~
+- ~~Add endgame detection~~
+- Add support for castling, promotions and EP
 - Create engine test cases
 - RL Self-Play Support
