@@ -49,22 +49,24 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 
 	gameMsg := DefaultGameMsg{}
 	gameMsg.msgType = "gameFull"
-	engine.gameChannel <- gameMsg
 
 	for {
-		move := <- engine.inputChannel
-		from, to, err := engine.game.ProcessMove(move)
+		printMoveList(engine.game.GetAllLegalMoves())
+		engine.gameChannel <- gameMsg
+		cmd := <- engine.inputChannel
+		fromSqr, toSqr := engine.game.TranslateCommand(cmd)
+		move, err := engine.game.ProcessMove(fromSqr, toSqr)
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			engine.game.MakeMove(move)
 		}
-		engine.game.MakeMove(from, to)
 
 		printBoard(engine.game.board, engine.game.color)
 
 		gameMsg := DefaultGameMsg{}
 		gameMsg.msgType = "gameState"
-		gameMsg.currMove = move
-		engine.gameChannel <- gameMsg
+		gameMsg.currMove = cmd
 	}
 }
 

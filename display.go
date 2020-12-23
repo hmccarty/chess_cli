@@ -33,6 +33,19 @@ func printRawBitBoard(board uint64) {
 	}
 }
 
+func printMoveList(moves *MoveList) {
+	var currMove *MoveList = moves
+	fmt.Printf("Moves: ")
+	for {
+		if (currMove == nil || currMove.next == nil) {
+			break
+		}
+		fmt.Printf("%s, ", TranslateMove(currMove.move))
+		currMove = currMove.next
+	}
+	fmt.Println()
+}
+
 func printBoard(board [7]uint64, pieceColor [2]uint64) {
 		for i := uint8(8); i > 0; i-- {
 			fmt.Printf("%d  ", i)
