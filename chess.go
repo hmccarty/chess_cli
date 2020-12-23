@@ -65,6 +65,14 @@ type Game struct {
 	rayAttacks [64][8]uint64
 }
 
+type GameStatus uint8
+const (
+	IN_PLAY GameStatus = iota
+	WHITE_WON
+	BLACK_WON
+	DRAW
+)
+
 type Flag uint8
 const (
 	QUIET Flag = iota
@@ -447,8 +455,19 @@ func (game *Game) IsKingInCheck(color Color) bool {
 	return (attacks != 0)
 }
 
-func (game *Game) IsGameOver() {
+func (game *Game) GetGameStatus() GameStatus {
+	var legalMoves *MoveList = game.GetAllLegalMoves()
 
+	// If no legal moves, checkmate
+	if (legalMoves.move == nil) {
+		if (game.turn == WHITE) {
+			return BLACK_WON
+		} else {
+			return WHITE_WON 
+		}
+	}
+
+	return IN_PLAY
 }
 
 func (game *Game) GetTransMoves(piece uint64) uint64 {

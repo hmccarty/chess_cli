@@ -43,60 +43,21 @@ func main() {
 func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 				wg *sync.WaitGroup) {
 	defer wg.Done()
-	// game := Game{}
-	// userColor := WHITE
 
 	for {
 		gameUpdate := <-gameChannel
 
 		switch gameUpdate.getType() {
-			case "gameFull":
-				//game.Setup()
-				//printBoard(game.board, game.color)
 			case "gameState":
 				switch gameUpdate.getGameStatus() {
 					case "aborted", "resign", "timeout", "mate", "nostart":
-						// var move string = gameUpdate.getCurrMove()
-						// from, to, _ := game.ProcessMove(move) 
-						// game.MakeMove(from, to)
-						// //printHeader(game.numMoves)
-						// printBoard(game.board, game.color)
-						// //printFooter(gameUpdate.getWinner() + " wins!")
 						return
-					case "stalemate":
-						printFooter("Stalemate!")
-						return
-					default:
-						// var move string = gameUpdate.getCurrMove()
-						// from, to, _ := game.ProcessMove(move) 
-						// game.MakeMove(from, to)
-						// //printHeader(game.numMoves)
-						// printBoard(game.board, game.color)
 				}
-			case "chatLine":
 		}
 
 		fmt.Print("Action (move, resign or draw): ")
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		inputChannel <- response
-		// if game.turnColor == userColor {
-			//promptAction(engine)
-			//fmt.Println("\r\033[K\033[1A");
-		// }
-		//fmt.Println("\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\033[1A\n")
 	}
 }
-
-// func promptAction(engine Engine) {
-// 	fmt.Print("Action (move, resign or draw): ")
-// 	reader := bufio.NewReader(os.Stdin)
-// 	response, _ := reader.ReadString('\n')
-// 	path := lichessURL + gamePath + gameId + movePath + response
-// 	path = strings.TrimSpace(path)
-// 	_, err := client.Post(path, "plain/text", strings.NewReader(""))
-// 	if err != nil {
-// 		fmt.Print("Invalid option, try again\n")
-// 		promptAction(client, gameId)
-// 	}
-// }

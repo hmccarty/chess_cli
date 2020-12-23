@@ -54,19 +54,37 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 		printMoveList(engine.game.GetAllLegalMoves())
 		engine.gameChannel <- gameMsg
 		cmd := <- engine.inputChannel
+
+		gameMsg := DefaultGameMsg{}
+		gameMsg.msgType = "gameState"
+		gameMsg.currMove = cmd
+
 		fromSqr, toSqr := engine.game.TranslateCommand(cmd)
 		move, err := engine.game.ProcessMove(fromSqr, toSqr)
 		if err != nil {
 			fmt.Println(err)
 		} else {
 			engine.game.MakeMove(move)
+			printBoard(engine.game.board, engine.game.color)
+			var gameStatus GameStatus = engine.game.GetGameStatus()
+			switch (gameStatus) {
+			case WHITE_WON:
+				fmt.Println("White won!")
+				gameMsg.gameStatus = "mate"
+				engine.gameChannel <- gameMsg
+				return
+			case BLACK_WON:
+				fmt.Println("Black won!")
+				gameMsg.gameStatus = "mate"
+				engine.gameChannel <- gameMsg
+				return
+			case DRAW:
+				fmt.Println("Draw!")
+				gameMsg.gameStatus = "mate"
+				engine.gameChannel <- gameMsg
+				return
+			}
 		}
-
-		printBoard(engine.game.board, engine.game.color)
-
-		gameMsg := DefaultGameMsg{}
-		gameMsg.msgType = "gameState"
-		gameMsg.currMove = cmd
 	}
 }
 
