@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"errors"
 )
 
@@ -9,8 +10,13 @@ type GetMoveSubset func(uint64, Color) uint64
 const ASCII_ROW_OFFSET = 49
 const ASCII_COL_OFFSET = 96
 
-const notAFile = 0x7f7f7f7f7f7f7f7f
-const notHFile = 0xfefefefefefefefe
+const NOT_A_FILE = 0x7f7f7f7f7f7f7f7f
+const NOT_H_FILE = 0xfefefefefefefefe
+const A_FILE_CORNERS = 0x8000000000000080
+const H_FILE_CORNERS = 0x0100000000000001
+
+const KING_CASTLE_MASK = 0x06
+const QUEEN_CASTLE_MASK = 0x30
 
 // Enum to define board types
 type Board uint8
@@ -61,6 +67,8 @@ type Game struct {
 	turn Color
 	board [7]uint64
 	color [2]uint64
+	kingCastle [2]bool
+	queenCastle [2]bool
 	points [2]int8
 	rayAttacks [64][8]uint64
 }
@@ -77,12 +85,16 @@ type Flag uint8
 const (
 	QUIET Flag = iota
 	CAPTURE
+	KING_CASTLE
+	QUEEN_CASTLE
 	EP_CAPTURE
 	PROMOTION
 )
 
 type Move struct {
 	flag Flag
+	kingCastle [2]bool
+	queenCastle [2]bool
 	points int8
 	from uint64
 	fromBoard Board
@@ -184,6 +196,10 @@ func (game *Game) Setup() {
 		}
 	}
 
+	game.kingCastle[WHITE] = true
+	game.kingCastle[BLACK] = true
+	game.queenCastle[WHITE] = true
+	game.queenCastle[BLACK] = true
 	game.turn = WHITE
 }
 
@@ -221,6 +237,8 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 	if (fromColor != game.turn) {
 		return nil, errors.New("Cannot move opponent's piece.")
 	}
+
+	var flag Flag = QUIET
 
 	switch fromBoard {
 	case KING:
@@ -268,6 +286,28 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 	move.to = to
 	move.toBoard = toBoard
 	move.toColor = toColor
+	move.kingCastle[move.fromColor] = false
+	move.queenCastle[move.fromColor] = false
+
+	// TODO: Replace with branchless implementation
+	if (move.fromBoard == KING) {
+		if (game.kingCastle[move.fromColor] == true) {
+			move.kingCastle[move.fromColor] = true
+		}
+		if (game.queenCastle[move.fromColor] == true) {
+			move.queenCastle[move.fromColor] = true
+		}
+	} else if (move.fromBoard == ROOK) {
+		if ((move.from & A_FILE_CORNERS) != 0) {
+			if (game.queenCastle[move.fromColor] == true) {
+				move.queenCastle[move.fromColor] = true
+			}
+		} else if ((move.from & H_FILE_CORNERS) != 0) {
+			if (game.kingCastle[move.fromColor] == true) {
+				move.kingCastle[move.fromColor] = true
+			}
+		}
+	}
 
 	game.MakeMove(move)
 	var inCheck bool = game.IsKingInCheck(move.fromColor)
@@ -288,6 +328,15 @@ func (game *Game) MakeMove(move *Move) {
 	case CAPTURE:
 		game.Capture(move)
 	}
+
+	if (move.kingCastle[move.fromColor]) {
+		game.kingCastle[move.fromColor] = !game.kingCastle[move.fromColor]
+	}
+
+	if (move.queenCastle[move.fromColor]) {
+		game.queenCastle[move.fromColor] = !game.queenCastle[move.fromColor]
+	}
+
 	game.turn = oppColor[game.turn]
 	game.board[EMPTY] = game.FindEmptySpaces()
 }
@@ -314,6 +363,20 @@ func (game *Game) Capture(move *Move) {
 	// Update point totals
 	game.points[move.fromColor] += boardToPoints[move.toBoard]
 }
+
+func (game *Game) CastleKing(move *Move) {
+	var king uint64 = game.board[KING] & move.fromColor
+	var rook uint64 = game.board[ROOK] & move.fromColor & H_FILE_CORNERS
+	king |= king >> 2
+	rook |= rook << 3
+	game.board[KING] ^= king
+	game.board[ROOK] ^= rook
+	game.board[move.fromColor] ^= (king | rook)
+}
+
+// func (game *Game) CastleQueen(move *Move) {
+	
+// }
 
 func (game *Game) FindEmptySpaces() uint64 {
 	return ^(game.color[WHITE] | game.color[BLACK])
@@ -345,7 +408,6 @@ func (game *Game) GetAllLegalMoves() *MoveList {
 
 	pieces = game.board[KING] & game.color[game.turn]
 	currMove = game.AddMovesToList(pieces, game.turn, game.GetKingMoves, currMove)
-	
 
 	pieces = game.board[QUEEN] & game.color[game.turn]
 	currMove = game.AddMovesToList(pieces, game.turn, game.GetQueenMoves, currMove)
@@ -386,6 +448,46 @@ func (game *Game) AddMovesToList(pieces uint64, color Color,
 	}
 
 	return moveList
+}
+
+func (game *Game) CanCastleKingSide(color Color) bool {
+	if (!game.kingCastle[color]) {
+		return false
+	}
+
+	var castleMask uint64 = KING_CASTLE_MASK
+	if (color == BLACK) {
+		castleMask = castleMask << 56
+	}
+
+	if ((game.board[EMPTY] & castleMask) != castleMask) {
+		return false
+	} else if (game.IsSqrUnderAttack(bitScanForward(castleMask), color) ||
+			   game.IsSqrUnderAttack(bitScanReverse(castleMask), color)) {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (game *Game) CanCastleQueenSide(color Color) bool {
+	if (!game.queenCastle[color]) {
+		return false
+	}
+
+	var castleMask uint64 = QUEEN_CASTLE_MASK
+	if (color == BLACK) {
+		castleMask = castleMask << 56
+	}
+
+	if ((game.board[EMPTY] & castleMask) != castleMask) {
+		return false
+	} else if (game.IsSqrUnderAttack(bitScanForward(castleMask), color) ||
+			  game.IsSqrUnderAttack(bitScanReverse(castleMask), color)) {
+		return false
+	} else {
+		return true
+	}
 }
 
 func (game *Game) GetKingMoves(board uint64, color Color) uint64 {
@@ -444,13 +546,18 @@ func (game *Game) GetPawnMoves(board uint64, color Color) uint64 {
 
 func (game *Game) IsKingInCheck(color Color) bool {
 	var king uint64 = game.board[KING] & game.color[color]
+	return game.IsSqrUnderAttack(bitScanForward(king), color)
+}
+
+func (game *Game) IsSqrUnderAttack(sqr uint8, color Color) bool {
+	var pos uint64 = 1 << sqr
 	var attacks uint64 = 0
 
-	attacks |= game.GetKingMoves(king, color) & game.board[KING]
-	attacks |= game.GetRookMoves(king, color) & (game.board[ROOK] | game.board[QUEEN])
-	attacks |= game.GetBishopMoves(king, color) & (game.board[BISHOP] | game.board[QUEEN])
-	attacks |= game.GetKnightMoves(king, color) & game.board[KNIGHT]
-	attacks |= game.GetPawnMoves(king, color) & game.board[PAWN]
+	attacks |= game.GetKingMoves(pos, color) & game.board[KING]
+	attacks |= game.GetRookMoves(pos, color) & (game.board[ROOK] | game.board[QUEEN])
+	attacks |= game.GetBishopMoves(pos, color) & (game.board[BISHOP] | game.board[QUEEN])
+	attacks |= game.GetKnightMoves(pos, color) & game.board[KNIGHT]
+	attacks |= game.GetPawnMoves(pos, color) & game.board[PAWN]
 	
 	return (attacks != 0)
 }
@@ -510,14 +617,14 @@ func (game *Game) GetNegRayAttacks(sqr uint8, dir RayDirections) uint64 {
 	return attacks ^ game.rayAttacks[sqr][dir]
 }
 
-func moveNWest(board uint64) uint64 {return (board << 9) & notHFile}
+func moveNWest(board uint64) uint64 {return (board << 9) & (NOT_H_FILE)}
 func moveNorth(board uint64) uint64 {return board << 8}
-func moveNEast(board uint64) uint64 {return (board << 7) & notAFile}
-func moveEast(board uint64) uint64 {return (board >> 1) & notAFile}
-func moveSEast(board uint64) uint64 {return (board >> 9) & notAFile}
+func moveNEast(board uint64) uint64 {return (board << 7) & (NOT_A_FILE)}
+func moveEast(board uint64) uint64 {return (board >> 1) & (NOT_A_FILE)}
+func moveSEast(board uint64) uint64 {return (board >> 9) & (NOT_A_FILE)}
 func moveSouth(board uint64) uint64 {return board >> 8}
-func moveSWest(board uint64) uint64 {return (board >> 7) & notHFile}
-func moveWest(board uint64) uint64 {return (board << 1) & notHFile}
+func moveSWest(board uint64) uint64 {return (board >> 7) & (NOT_H_FILE)}
+func moveWest(board uint64) uint64 {return (board << 1) & (NOT_H_FILE)}
 
 func decodePosition(row uint8, col uint8) uint64 {
 	return 0x1 << ((uint64(row) << 3) | uint64(col))

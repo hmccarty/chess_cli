@@ -52,6 +52,7 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 
 	for {
 		printMoveList(engine.game.GetAllLegalMoves())
+		fmt.Println(engine.game.CanCastleKingSide(engine.game.turn))
 		engine.gameChannel <- gameMsg
 		cmd := <- engine.inputChannel
 
