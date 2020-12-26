@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"errors"
 )
 
@@ -14,6 +14,8 @@ const NOT_A_FILE = 0x7f7f7f7f7f7f7f7f
 const NOT_H_FILE = 0xfefefefefefefefe
 const A_FILE_CORNERS = 0x8000000000000080
 const H_FILE_CORNERS = 0x0100000000000001
+
+const EIGTH_RANK = 0xFF000000000000FF
 
 const KING_CASTLE_MASK = 0x06
 const QUEEN_CASTLE_MASK = 0x30
@@ -85,8 +87,8 @@ type Flag uint8
 const (
 	QUIET Flag = iota
 	CAPTURE
-	KING_CASTLE
-	QUEEN_CASTLE
+	KING_SIDE_CASTLE
+	QUEEN_SIDE_CASTLE
 	EP_CAPTURE
 	PROMOTION
 )
@@ -233,6 +235,8 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 
 	var fromBoard Board = game.FindBoard(from)
 	var fromColor Color = game.FindColor(from)
+	var toBoard Board = game.FindBoard(to)
+	var toColor Color = game.FindColor(to)
 
 	if (fromColor != game.turn) {
 		return nil, errors.New("Cannot move opponent's piece.")
@@ -243,7 +247,13 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 	switch fromBoard {
 	case KING:
 		if ((to & game.GetKingMoves(from, fromColor)) == 0) {
-			return nil, errors.New("Invalid king move.")
+			if (to & (game.board[KING] >> 2) != 0) {
+				flag = KING_SIDE_CASTLE
+			} else if (to & (game.board[KING] << 2) != 0) {
+				flag = QUEEN_SIDE_CASTLE	
+			} else {
+				return nil, errors.New("Invalid king move.")
+			}
 		}
 	case QUEEN:
 		if ((to & game.GetQueenMoves(from, fromColor)) == 0) {
@@ -264,22 +274,21 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 	case PAWN:
 		if ((to & game.GetPawnMoves(from, fromColor)) == 0) {
 			return nil, errors.New("Invalid pawn move.")
+		} else if ((to & EIGTH_RANK) != 0) {
+			toBoard = promptPiecePromotion()
+			toColor = fromColor
 		}
 	case EMPTY:
 		return nil, errors.New("Piece doesn't exist at square.")
 	}
 
-	var toBoard Board = game.FindBoard(to)
-	var toColor Color = game.FindColor(to)
-
 	var move *Move = new(Move)
 	if (to & game.board[EMPTY] == 0) {
-		move.flag = CAPTURE
+		flag = CAPTURE
 		move.points = boardToPoints[toBoard]
-	} else {
-		move.flag = QUIET
 	}
 
+	move.flag = flag
 	move.from = from
 	move.fromBoard = fromBoard
 	move.fromColor = fromColor
@@ -327,6 +336,10 @@ func (game *Game) MakeMove(move *Move) {
 		game.QuietMove(move)
 	case CAPTURE:
 		game.Capture(move)
+	case KING_SIDE_CASTLE:
+		game.CastleKingSide(move)
+	case QUEEN_SIDE_CASTLE:
+		game.CastleQueenSide(move)
 	}
 
 	if (move.kingCastle[move.fromColor]) {
@@ -348,8 +361,10 @@ func (game *Game) UndoMove(move *Move) {
 }
 
 func (game *Game) QuietMove(move *Move) {
-	game.board[move.fromBoard] ^= (move.from ^ move.to)
-	game.color[move.fromColor] ^= (move.from ^ move.to)
+	game.board[move.fromBoard] ^= move.from
+	game.board[move.toBoard] ^= move.to
+	game.color[move.fromColor] ^= move.from
+	game.color[move.toColor] ^= move.to
 }
 
 func (game *Game) Capture(move *Move) {
@@ -358,25 +373,36 @@ func (game *Game) Capture(move *Move) {
 	game.color[move.toColor] ^= move.to
 
 	// Move piece on attacking board
-	game.QuietMove(move)
+	game.board[move.fromBoard] ^= (move.from ^ move.to)
+	game.color[move.fromBoard] ^= (move.from ^ move.to)
 
 	// Update point totals
 	game.points[move.fromColor] += boardToPoints[move.toBoard]
 }
 
-func (game *Game) CastleKing(move *Move) {
-	var king uint64 = game.board[KING] & move.fromColor
-	var rook uint64 = game.board[ROOK] & move.fromColor & H_FILE_CORNERS
-	king |= king >> 2
-	rook |= rook << 3
-	game.board[KING] ^= king
-	game.board[ROOK] ^= rook
-	game.board[move.fromColor] ^= (king | rook)
+func (game *Game) CastleKingSide(move *Move) {
+	if (move.fromColor == WHITE) {
+		game.board[KING] ^= 0x0A
+		game.board[ROOK] ^= 0x05
+		game.color[move.fromColor] ^= 0x0F
+	} else {
+		game.board[KING] ^= (0x0A << 56)
+		game.board[ROOK] ^= (0x05 << 56)
+		game.color[move.fromColor] ^= 0x0F << 56
+	}
 }
 
-// func (game *Game) CastleQueen(move *Move) {
-	
-// }
+func (game *Game) CastleQueenSide(move *Move) {
+	if (move.fromColor == WHITE) {
+		game.board[KING] ^= 0x28
+		game.board[ROOK] ^= 0x90
+		game.color[move.fromColor] ^= 0xB8
+	} else {
+		game.board[KING] ^= (0x28 << 56)
+		game.board[ROOK] ^= (0x90 << 56)
+		game.color[move.fromColor] ^= 0xB8 << 56
+	}
+}
 
 func (game *Game) FindEmptySpaces() uint64 {
 	return ^(game.color[WHITE] | game.color[BLACK])

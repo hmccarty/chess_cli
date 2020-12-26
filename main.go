@@ -44,6 +44,7 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 				wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		gameUpdate := <-gameChannel
 
@@ -56,7 +57,6 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 		}
 
 		fmt.Print("Action (move, resign or draw): ")
-		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		inputChannel <- response
 	}
