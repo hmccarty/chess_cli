@@ -3,11 +3,12 @@ package main
 import (
 	"sync"
 	"fmt"
+	goengine "github.com/hmccarty/gochess/engine"
 )
 
 type DefaultEngine struct {
 	user *DefaultUser
-	game *Game
+	game *goengine.Game
 	gameChannel chan DefaultGameMsg
 	inputChannel chan string
 }
@@ -30,7 +31,7 @@ func (engine *DefaultEngine) Setup(gameChannel chan DefaultGameMsg,
 	engine.gameChannel = gameChannel
 	engine.inputChannel = inputChannel
 
-	engine.game = &Game{}
+	engine.game = &goengine.Game{}
 	engine.game.Setup()
 }
 

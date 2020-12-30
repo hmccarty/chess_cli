@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	//"fmt"
@@ -280,8 +280,7 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 		if ((to & game.GetPawnMoves(from, fromColor)) == 0) {
 			return nil, errors.New("Invalid pawn move.")
 		} else if ((to & EIGTH_RANK) != 0) {
-			toBoard = promptPiecePromotion()
-			toColor = fromColor
+			flag = PROMOTION
 		}
 	case EMPTY:
 		return nil, errors.New("Piece doesn't exist at square.")
@@ -345,6 +344,11 @@ func (game *Game) MakeMove(move *Move) {
 		game.CastleKingSide(move)
 	case QUEEN_SIDE_CASTLE:
 		game.CastleQueenSide(move)
+	case PROMOTION:
+		if (move.toBoard == PAWN) {
+			move.toBoard = promptPiecePromotion()
+		}
+		game.QuietMove(move)
 	}
 
 	if (move.kingCastle[move.fromColor]) {
@@ -468,6 +472,9 @@ func (game *Game) AddMovesToList(pieces uint64, color Color,
 			var toSqr uint8 = bitScanForward(moves)
 			move, err := game.ProcessMove(bitScanForward(piece), toSqr)
 			if (err == nil) {
+				if (move.flag == PROMOTION) {
+					
+				}
 				moveList.move = move
 				moveList.next = new(MoveList)
 				moveList.next.prev = moveList

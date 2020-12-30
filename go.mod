@@ -1,4 +1,4 @@
-module github.com/hmccarty/chess_cli
+module github.com/hmccarty/gochess
 
 go 1.14
 
