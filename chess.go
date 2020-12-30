@@ -238,6 +238,11 @@ func (game *Game) ProcessMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 	var toBoard Board = game.FindBoard(to)
 	var toColor Color = game.FindColor(to)
 
+	if (toBoard == EMPTY) {
+		toBoard = fromBoard
+		toColor = fromColor
+	}
+
 	if (fromColor != game.turn) {
 		return nil, errors.New("Cannot move opponent's piece.")
 	}
@@ -374,7 +379,7 @@ func (game *Game) Capture(move *Move) {
 
 	// Move piece on attacking board
 	game.board[move.fromBoard] ^= (move.from ^ move.to)
-	game.color[move.fromBoard] ^= (move.from ^ move.to)
+	game.color[move.fromColor] ^= (move.from ^ move.to)
 
 	// Update point totals
 	game.points[move.fromColor] += boardToPoints[move.toBoard]
