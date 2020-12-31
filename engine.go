@@ -46,14 +46,14 @@ func (engine *DefaultEngine) getGameChannel() chan DefaultGameMsg {
 func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	printBoard(engine.game.board, engine.game.color)
+	fmt.Println(engine.game.GetFENString())
+	printBoard(engine.game.GetFENString())
 
 	gameMsg := DefaultGameMsg{}
 	gameMsg.msgType = "gameFull"
 
 	for {
-		printMoveList(engine.game.GetAllLegalMoves())
-		fmt.Println(engine.game.CanCastleKingSide(engine.game.turn))
+		//printMoveList(engine.game.GetAllLegalMoves())
 		engine.gameChannel <- gameMsg
 		cmd := <- engine.inputChannel
 
@@ -67,20 +67,22 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 			fmt.Println(err)
 		} else {
 			engine.game.MakeMove(move)
-			printBoard(engine.game.board, engine.game.color)
-			var gameStatus GameStatus = engine.game.GetGameStatus()
+			fmt.Println(engine.game.GetFENString())
+			printBoard(engine.game.GetFENString())
+			// printBoard(engine.game.board, engine.game.color)
+			var gameStatus goengine.GameStatus = engine.game.GetGameStatus()
 			switch (gameStatus) {
-			case WHITE_WON:
+			case goengine.WHITE_WON:
 				fmt.Println("White won!")
 				gameMsg.gameStatus = "mate"
 				engine.gameChannel <- gameMsg
 				return
-			case BLACK_WON:
+			case goengine.BLACK_WON:
 				fmt.Println("Black won!")
 				gameMsg.gameStatus = "mate"
 				engine.gameChannel <- gameMsg
 				return
-			case DRAW:
+			case goengine.DRAW:
 				fmt.Println("Draw!")
 				gameMsg.gameStatus = "mate"
 				engine.gameChannel <- gameMsg

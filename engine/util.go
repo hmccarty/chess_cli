@@ -1,4 +1,4 @@
-package main
+package engine
 
 func abs(val int) int {
 	if (val < 0) {
