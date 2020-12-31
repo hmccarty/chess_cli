@@ -1,4 +1,4 @@
-package engine
+package goengine
 
 type Move struct {
 	flag Flag
@@ -13,7 +13,24 @@ type Move struct {
 	toColor Color
 }
 
-func (move *Move) translate() string {
+func (move *Move) copy() *Move {
+	var new *Move = new(Move)
+	new.flag = move.flag
+	new.kingCastle[WHITE] = move.kingCastle[WHITE]
+	new.kingCastle[BLACK] = move.kingCastle[BLACK]
+	new.queenCastle[WHITE] = move.queenCastle[WHITE]
+	new.queenCastle[BLACK] = move.queenCastle[BLACK]
+	new.points = move.points
+	new.from = move.from
+	new.fromBoard = move.fromBoard
+	new.fromColor = move.fromColor
+	new.to = move.to
+	new.toBoard = move.toBoard
+	new.toColor = move.toColor
+	return new
+}
+
+func (move *Move) ToString() string {
 	var fromSqr uint8 = bitScanForward(move.from)
 	var toSqr uint8 = bitScanForward(move.to)
 	var startRow uint8 = fromSqr / 8
@@ -28,7 +45,8 @@ func (move *Move) translate() string {
 
 type Flag uint8
 const (
-	QUIET Flag = iota
+	UNKNOWN Flag = iota
+	QUIET
 	CAPTURE
 	KING_SIDE_CASTLE
 	QUEEN_SIDE_CASTLE

@@ -1,4 +1,4 @@
-package engine
+package goengine
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ type Board struct {
 }
 
 func (board *Board) setup() {
-		// Add pieces to bitboards, bitshifting math is
+	// Add pieces to bitboards, bitshifting math is
 	// redundant but better represents positions within
 	// the bitmap
 
@@ -104,74 +104,60 @@ func (board *Board) setup() {
 	board.queenCastle[BLACK] = true
 }
 
-func (board *Board) createMove(fromSqr uint8, toSqr uint8) (*Move, error) {
-	var from uint64 = 1 << fromSqr
-	var to uint64 = 1 << toSqr
+func (board *Board) processMove(move *Move) error {
+	move.fromBoard = board.findBoard(move.from)
+	move.fromColor = board.findColor(move.from)
+	move.toBoard = board.findBoard(move.to)
+	move.toColor = board.findColor(move.to)
 
-	var fromBoard Piece = board.findBoard(from)
-	var fromColor Color = board.findColor(from)
-	var toBoard Piece = board.findBoard(to)
-	var toColor Color = board.findColor(to)
-
-	if (toBoard == EMPTY) {
-		toBoard = fromBoard
-		toColor = fromColor
+	if (move.toBoard == EMPTY) {
+		move.toBoard = move.fromBoard
+		move.toColor = move.fromColor
 	}
 
-	var flag Flag = QUIET
+	move.flag = QUIET
 
-	switch fromBoard {
+	switch move.fromBoard {
 	case KING:
-		if ((to & board.getKingMoves(from, fromColor)) == 0) {
-			if (to & (board.piece[KING] >> 2) != 0) {
-				flag = KING_SIDE_CASTLE
-			} else if (to & (board.piece[KING] << 2) != 0) {
-				flag = QUEEN_SIDE_CASTLE	
+		if ((move.to & board.getKingSet(move.from, move.fromColor)) == 0) {
+			if (move.to & (board.piece[KING] >> 2) != 0) {
+				move.flag = KING_SIDE_CASTLE
+			} else if (move.to & (board.piece[KING] << 2) != 0) {
+				move.flag = QUEEN_SIDE_CASTLE	
 			} else {
-				return nil, errors.New("Invalid king move.")
+				return errors.New("Invalid king move.")
 			}
 		}
 	case QUEEN:
-		if ((to & board.getQueenMoves(from, fromColor)) == 0) {
-			return nil, errors.New("Invalid queen move.")
+		if ((move.to & board.getQueenSet(move.from, move.fromColor)) == 0) {
+			return errors.New("Invalid queen move.")
 		}
 	case ROOK:
-		if ((to & board.getRookMoves(from, fromColor)) == 0) {
-			return nil, errors.New("Invalid rook move.")
+		if ((move.to & board.getRookSet(move.from, move.fromColor)) == 0) {
+			return errors.New("Invalid rook move.")
 		}
 	case BISHOP:
-		if ((to & board.getBishopMoves(from, fromColor)) == 0) {
-			return nil, errors.New("Invalid bishop move.")
+		if ((move.to & board.getBishopSet(move.from, move.fromColor)) == 0) {
+			return errors.New("Invalid bishop move.")
 		}
 	case KNIGHT:
-		if ((to & board.getKnightMoves(from, fromColor)) == 0) {
-			return nil, errors.New("Invalid knight move.")
+		if ((move.to & board.getKnightSet(move.from, move.fromColor)) == 0) {
+			return errors.New("Invalid knight move.")
 		}
 	case PAWN:
-		if ((to & board.getPawnMoves(from, fromColor)) == 0) {
-			return nil, errors.New("Invalid pawn move.")
-		} else if ((to & EIGTH_RANK) != 0) {
-			flag = PROMOTION
+		if ((move.to & board.getPawnSet(move.from, move.fromColor)) == 0) {
+			return errors.New("Invalid pawn move.")
+		} else if ((move.to & EIGTH_RANK) != 0) {
+			move.flag = PROMOTION
 		}
 	case EMPTY:
-		return nil, errors.New("Piece doesn't exist at square.")
+		return errors.New("Piece doesn't exist at square.")
 	}
 
-	var move *Move = new(Move)
-	if (to & board.piece[EMPTY] == 0) {
-		flag = CAPTURE
-		move.points = pieceToPoints[toBoard]
+	if (move.to & board.piece[EMPTY] == 0) {
+		move.flag = CAPTURE
+		move.points = pieceToPoints[move.toBoard]
 	}
-
-	move.flag = flag
-	move.from = from
-	move.fromBoard = fromBoard
-	move.fromColor = fromColor
-	move.to = to
-	move.toBoard = toBoard
-	move.toColor = toColor
-	move.kingCastle[move.fromColor] = false
-	move.queenCastle[move.fromColor] = false
 
 	// TODO: Replace with branchless implementation
 	if (move.fromBoard == KING) {
@@ -193,7 +179,7 @@ func (board *Board) createMove(fromSqr uint8, toSqr uint8) (*Move, error) {
 		}
 	}
 
-	return move, nil
+	return nil
 }
 
 func (board *Board) quietMove(move *Move) {
@@ -277,7 +263,7 @@ func (board *Board) findColor(pos uint64) Color {
 }
 
 func (board *Board) setFENString(fen string) {
-
+	// TODO
 }
 
 func (board *Board) getFENBoard() string {
@@ -340,7 +326,7 @@ func (board *Board) getPieces(piece Piece, color Color) uint64 {
 	return board.piece[piece] & board.color[color]
 }
 
-func (board *Board) getKingMoves(piece uint64, color Color) uint64 {
+func (board *Board) getKingSet(piece uint64, color Color) uint64 {
 	var moves uint64 = moveNorth(piece) | moveSouth(piece)
 	moves |= moveEast(piece) | moveWest(piece)
 	moves |= moveNEast(piece) | moveNWest(piece)
@@ -348,7 +334,7 @@ func (board *Board) getKingMoves(piece uint64, color Color) uint64 {
 	return moves & (^board.color[color])
 }
 
-func (board *Board) getKnightMoves(piece uint64, color Color) uint64 {
+func (board *Board) getKnightSet(piece uint64, color Color) uint64 {
 	var moves uint64 = moveNorth(moveNEast(piece) | moveNWest(piece))
 	moves |= moveEast(moveNEast(piece) | moveSEast(piece))
 	moves |= moveWest(moveNWest(piece) | moveSWest(piece))
@@ -356,20 +342,20 @@ func (board *Board) getKnightMoves(piece uint64, color Color) uint64 {
 	return moves & (^board.color[color])
 }
 
-func (board *Board) getRookMoves(piece uint64, color Color) uint64 {
-	return board.getTransMoves(piece) & (^board.color[color])
+func (board *Board) getRookSet(piece uint64, color Color) uint64 {
+	return board.getTransSet(piece) & (^board.color[color])
 }
 
-func (board *Board) getBishopMoves(piece uint64, color Color) uint64 {
-	return board.getDiagMoves(piece) & (^board.color[color])
+func (board *Board) getBishopSet(piece uint64, color Color) uint64 {
+	return board.getDiagSet(piece) & (^board.color[color])
 }
 
-func (board *Board) getQueenMoves(piece uint64, color Color) uint64 {
-	var moves uint64 = board.getTransMoves(piece) | board.getDiagMoves(piece)
+func (board *Board) getQueenSet(piece uint64, color Color) uint64 {
+	var moves uint64 = board.getTransSet(piece) | board.getDiagSet(piece)
 	return moves & (^board.color[color])
 }
 
-func (board *Board) getPawnMoves(piece uint64, color Color) uint64 {
+func (board *Board) getPawnSet(piece uint64, color Color) uint64 {
 	var moves uint64 = 0
 	if (color == WHITE) {
 		// Check for single push
@@ -443,16 +429,16 @@ func (board *Board) isSqrUnderAttack(sqr uint8, color Color) bool {
 	var pos uint64 = 1 << sqr
 	var attacks uint64 = 0
 
-	attacks |= board.getKingMoves(pos, color) & board.piece[KING]
-	attacks |= board.getRookMoves(pos, color) & (board.piece[ROOK] | board.piece[QUEEN])
-	attacks |= board.getBishopMoves(pos, color) & (board.piece[BISHOP] | board.piece[QUEEN])
-	attacks |= board.getKnightMoves(pos, color) & board.piece[KNIGHT]
-	attacks |= board.getPawnMoves(pos, color) & board.piece[PAWN]
+	attacks |= board.getKingSet(pos, color) & board.piece[KING]
+	attacks |= board.getRookSet(pos, color) & (board.piece[ROOK] | board.piece[QUEEN])
+	attacks |= board.getBishopSet(pos, color) & (board.piece[BISHOP] | board.piece[QUEEN])
+	attacks |= board.getKnightSet(pos, color) & board.piece[KNIGHT]
+	attacks |= board.getPawnSet(pos, color) & board.piece[PAWN]
 	
 	return (attacks != 0)
 }
 
-func (board *Board) getTransMoves(piece uint64) uint64 {
+func (board *Board) getTransSet(piece uint64) uint64 {
 	var moves uint64 = 0
 	for piece != 0 {
 		var sqr uint8 = bitScanForward(piece)
@@ -465,7 +451,7 @@ func (board *Board) getTransMoves(piece uint64) uint64 {
 	return moves
 }
 
-func (board *Board) getDiagMoves(piece uint64) uint64 {
+func (board *Board) getDiagSet(piece uint64) uint64 {
 	var moves uint64 = 0
 	for piece != 0 {
 		var sqr uint8 = bitScanForward(piece)
@@ -505,7 +491,7 @@ func decodePosition(row uint8, col uint8) uint64 {
 	return 0x1 << ((uint64(row) << 3) | uint64(col))
 }
 
-type GetMoveSubset func(uint64, Color) uint64
+type GetSet func(uint64, Color) uint64
 
 type RayDirections uint8
 const (

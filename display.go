@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/hmccarty/gochess/goengine"
 )
 
 func printBoard(fen string) {
@@ -36,4 +37,12 @@ func printBoard(fen string) {
 		color.Unset()
 	}
 	fmt.Println("\n   A  B  C  D  E  F  G  H ")
+}
+
+func printMoveList(moves []*goengine.Move) {
+	fmt.Printf("Moves: ")
+	for _, move := range moves {
+		fmt.Printf("%s, ", move.ToString())
+	}
+	fmt.Println()
 }

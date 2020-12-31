@@ -1,4 +1,4 @@
-package engine
+package goengine
 
 func abs(val int) int {
 	if (val < 0) {

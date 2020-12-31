@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 	"fmt"
-	goengine "github.com/hmccarty/gochess/engine"
+	"github.com/hmccarty/gochess/goengine"
 )
 
 type DefaultEngine struct {
@@ -51,7 +51,7 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	gameMsg.msgType = "gameFull"
 
 	for {
-		//printMoveList(engine.game.GetAllLegalMoves())
+		printMoveList(engine.game.GetMoves())
 		engine.gameChannel <- gameMsg
 		cmd := <- engine.inputChannel
 
@@ -59,8 +59,9 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 		gameMsg.msgType = "gameState"
 		gameMsg.currMove = cmd
 
-		fromSqr, toSqr := engine.game.TranslateCommand(cmd)
-		move, err := engine.game.ProcessMove(fromSqr, toSqr)
+		from, to := engine.game.ProcessCommand(cmd)
+		move, err := engine.game.CreateMove(from, to)
+		err = engine.game.CheckMove(move)
 		if err != nil {
 			fmt.Println(err)
 		} else {
