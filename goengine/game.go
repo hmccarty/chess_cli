@@ -42,18 +42,20 @@ func (game *Game) ProcessCommand(cmd string) (uint64, uint64) {
 
 func (game *Game) CreateMove(from uint64, to uint64) (*Move, error) {
 	var move *Move = new(Move)
-	move.from = from
-	move.to = to
+	move.from = new(State)
+	move.from.board = from
+	move.to = new(State)
+	move.to.board = to
 	return move, game.board.processMove(move)
 }
 
 func (game *Game) CheckMove(move *Move) error {
-	if (move.fromColor != game.turn) {
+	if (move.from.color != game.turn) {
 		return errors.New("Cannot move opponent's piece.")
 	}
 
 	game.MakeMove(move)
-	var inCheck bool = game.board.isKingInCheck(move.fromColor)
+	var inCheck bool = game.board.isKingInCheck(move.from.color)
 	game.UndoMove(move)
 	
 	if (inCheck) {
@@ -74,20 +76,33 @@ func (game *Game) MakeMove(move *Move) {
 	case QUEEN_SIDE_CASTLE:
 		game.board.castleQueenSide(move)
 	case PROMOTION:
-		if (move.toBoard == PAWN) {
-			move.toBoard = QUEEN
+		if move.to.piece == PAWN {
+			move.to.piece = QUEEN
+		}
+		game.board.quietMove(move)
+	case EP_CAPTURE:
+		if game.turn == WHITE {
+			game.board.piece[PAWN] ^= moveNorth(move.from.enPassant)
+		} else {
+			game.board.piece[PAWN] ^= moveSouth(move.from.enPassant)
 		}
 		game.board.quietMove(move)
 	}
 
 	game.board.updateCastleRights(move)
+	game.board.enPassant = move.to.enPassant
+	game.points[WHITE] = move.to.points[WHITE]
+	game.points[BLACK] = move.to.points[BLACK]
 	game.turn = oppColor[game.turn]
 }
 
 func (game *Game) UndoMove(move *Move) {
-	move.points *= -1
+	var tmpTo *State = move.to
+	move.to = move.from
+	move.from = tmpTo
 	game.MakeMove(move)
-	move.points *= -1
+	move.from = move.to
+	move.to = tmpTo
 }
 
 func (game *Game) GetMoves() []*Move {
@@ -128,7 +143,7 @@ func (game *Game) getPieceMoves(pieces uint64, color Color,
 				if move.flag == PROMOTION {
 					potentialPromos := [4]Piece{QUEEN, ROOK, BISHOP, KNIGHT}
 					for _, promo := range potentialPromos {
-						move.toBoard = promo
+						move.to.piece = promo
 						err = game.CheckMove(move)
 						if err == nil {
 							list = append(list, move)

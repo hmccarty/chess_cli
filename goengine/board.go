@@ -10,7 +10,8 @@ type Board struct {
 	color [2]uint64
 	rayAttacks [64][8]uint64
 	kingCastle [2]bool
-	queenCastle [2]bool
+	queenCastle [2]bool	
+	enPassant uint64
 }
 
 func (board *Board) setup() {
@@ -49,7 +50,7 @@ func (board *Board) setup() {
 	board.piece[PAWN] = (0xFF << 8) | (0xFF << 48)
 
 	// Track all open squares
-	board.piece[EMPTY] = board.findEmptySpaces()
+	board.piece[EMPTY] = board.getEmptySet()
 
 	// Calculate ray attacks
 	// TODO: Find a more elegant approach to ray-move calculation
@@ -105,149 +106,128 @@ func (board *Board) setup() {
 }
 
 func (board *Board) processMove(move *Move) error {
-	move.fromBoard = board.findBoard(move.from)
-	move.fromColor = board.findColor(move.from)
-	move.toBoard = board.findBoard(move.to)
-	move.toColor = board.findColor(move.to)
+	move.from.piece = board.findPiece(move.from.board)
+	move.from.color = board.findColor(move.from.board)
+	move.to.piece = board.findPiece(move.to.board)
+	move.to.color = board.findColor(move.to.board)
 
-	if (move.fromBoard == EMPTY) {
-		return errors.New("Piece does not exist at square.")
-	} else if (move.toBoard == EMPTY) {
-		move.toBoard = move.fromBoard
-		move.toColor = move.fromColor
+	if move.from.piece == EMPTY {
+		return errors.New("Piece doesn't exist at square.")
+	} else if (move.to.piece == EMPTY) {
+		move.flag = QUIET
+		move.to.piece = move.from.piece
+		move.to.color = move.from.color
 	}
 
-	move.flag = QUIET
-
-	switch move.fromBoard {
-	case KING:
-		if ((move.to & board.getKingSet(move.from, move.fromColor)) == 0) {
-			if (move.to & (board.piece[KING] >> 2) != 0) {
+	var pieceSet GetSet = board.getPieceSet(move.from.piece)
+	var setRange uint64 = pieceSet(move.from.board, move.from.color)
+	if (move.to.board & setRange) == 0 {
+		if move.from.piece == KING {
+			if (move.to.board & (board.piece[KING] >> 2)) != 0 {
 				move.flag = KING_SIDE_CASTLE
-			} else if (move.to & (board.piece[KING] << 2) != 0) {
-				move.flag = QUEEN_SIDE_CASTLE	
+			} else if (move.to.board & (board.piece[KING] << 2)) != 0 {
+				move.flag = QUEEN_SIDE_CASTLE
 			} else {
-				return errors.New("Invalid king move.")
+				return errors.New("Move does not exist in piece range.")
+			}
+		} else if move.from.piece == PAWN {
+			if (board.getPawnAttackSet(move.from.board, move.from.color) & move.from.enPassant) != 0 {
+				move.flag = EP_CAPTURE
+				move.to.points[move.from.color] = pieceToPoints[PAWN]
+			}
+		} else {
+			return errors.New("Move does not exist in piece range.")
+		}
+	}
+
+	if move.from.piece == PAWN {
+		if (move.to.board & EIGTH_RANK) != 0 {
+			move.flag = PROMOTION
+		} else {
+			if (move.from.color == WHITE) {
+				if (moveNorth(moveNorth(move.from.board)) & move.to.board) != 0 {
+					move.to.enPassant = moveSouth(move.to.board)
+				}
+			} else {
+				if (moveSouth(moveSouth(move.from.board)) & move.to.board) != 0 {
+					move.to.enPassant = moveNorth(move.to.board)
+				}
 			}
 		}
-	case QUEEN:
-		if ((move.to & board.getQueenSet(move.from, move.fromColor)) == 0) {
-			return errors.New("Invalid queen move.")
-		}
-	case ROOK:
-		if ((move.to & board.getRookSet(move.from, move.fromColor)) == 0) {
-			return errors.New("Invalid rook move.")
-		}
-	case BISHOP:
-		if ((move.to & board.getBishopSet(move.from, move.fromColor)) == 0) {
-			return errors.New("Invalid bishop move.")
-		}
-	case KNIGHT:
-		if ((move.to & board.getKnightSet(move.from, move.fromColor)) == 0) {
-			return errors.New("Invalid knight move.")
-		}
-	case PAWN:
-		if ((move.to & board.getPawnSet(move.from, move.fromColor)) == 0) {
-			return errors.New("Invalid pawn move.")
-		} else if ((move.to & EIGTH_RANK) != 0) {
-			move.flag = PROMOTION
-		}
-	case EMPTY:
-		return errors.New("Piece doesn't exist at square.")
-	}
+	}	
 
-	if (move.to & board.piece[EMPTY] == 0) {
+	if (move.to.board & board.piece[EMPTY]) == 0 {
 		move.flag = CAPTURE
-		move.points = pieceToPoints[move.toBoard]
+		move.to.points[move.from.color] = pieceToPoints[move.to.piece]
 	}
 
 	// TODO: Replace with branchless implementation
-	if (move.fromBoard == KING) {
-		if (board.kingCastle[move.fromColor] == true) {
-			move.kingCastle[move.fromColor] = true
-		}
-		if (board.queenCastle[move.fromColor] == true) {
-			move.queenCastle[move.fromColor] = true
-		}
-	} else if (move.fromBoard == ROOK) {
-		if ((move.from & A_FILE_CORNERS) != 0) {
-			if (board.queenCastle[move.fromColor] == true) {
-				move.queenCastle[move.fromColor] = true
-			}
-		} else if ((move.from & H_FILE_CORNERS) != 0) {
-			if (board.kingCastle[move.fromColor] == true) {
-				move.kingCastle[move.fromColor] = true
-			}
-		}
+	if (move.from.piece == KING) {
+		move.to.kingCastle[move.from.color] = false
+		move.to.queenCastle[move.from.color] = false
+	} else if (move.from.piece == ROOK) {
+		move.to.kingCastle[move.from.color] = false
+		move.to.queenCastle[move.from.color] = false
 	}
 
 	return nil
 }
 
 func (board *Board) quietMove(move *Move) {
-	board.piece[move.fromBoard] ^= move.from
-	board.piece[move.toBoard] ^= move.to
-	board.color[move.fromColor] ^= move.from
-	board.color[move.toColor] ^= move.to
+	board.piece[move.from.piece] ^= move.from.board
+	board.piece[move.to.piece] ^= move.to.board
+	board.color[move.from.color] ^= move.from.board
+	board.color[move.to.color] ^= move.to.board
 
-	board.piece[EMPTY] = board.findEmptySpaces()
+	board.piece[EMPTY] = board.getEmptySet()
 }
 
 func (board *Board) capture(move *Move) {
 	// Remove attacked piece
-	board.piece[move.toBoard] ^= move.to
-	board.color[move.toColor] ^= move.to
+	board.piece[move.to.piece] ^= move.to.board
+	board.color[move.to.color] ^= move.to.board
 
 	// Move piece on attacking board
-	board.piece[move.fromBoard] ^= (move.from ^ move.to)
-	board.color[move.fromColor] ^= (move.from ^ move.to)
+	board.piece[move.from.piece] ^= (move.from.board ^ move.to.board)
+	board.color[move.from.color] ^= (move.from.board ^ move.to.board)
 
-	board.piece[EMPTY] = board.findEmptySpaces()
+	board.piece[EMPTY] = board.getEmptySet()
 }
 
 func (board *Board) castleKingSide(move *Move) {
-	if (move.fromColor == WHITE) {
+	if (move.from.color == WHITE) {
 		board.piece[KING] ^= 0x0A
 		board.piece[ROOK] ^= 0x05
-		board.color[move.fromColor] ^= 0x0F
+		board.color[move.from.color] ^= 0x0F
 	} else {
 		board.piece[KING] ^= (0x0A << 56)
 		board.piece[ROOK] ^= (0x05 << 56)
-		board.color[move.fromColor] ^= 0x0F << 56
+		board.color[move.from.color] ^= 0x0F << 56
 	}
 
-	board.piece[EMPTY] = board.findEmptySpaces()
+	board.piece[EMPTY] = board.getEmptySet()
 }
 
 func (board *Board) castleQueenSide(move *Move) {
-	if (move.fromColor == WHITE) {
+	if (move.from.color == WHITE) {
 		board.piece[KING] ^= 0x28
 		board.piece[ROOK] ^= 0x90
-		board.color[move.fromColor] ^= 0xB8
+		board.color[move.from.color] ^= 0xB8
 	} else {
 		board.piece[KING] ^= (0x28 << 56)
 		board.piece[ROOK] ^= (0x90 << 56)
-		board.color[move.fromColor] ^= 0xB8 << 56
+		board.color[move.from.color] ^= 0xB8 << 56
 	}
 
-	board.piece[EMPTY] = board.findEmptySpaces()
+	board.piece[EMPTY] = board.getEmptySet()
 }
 
 func (board *Board) updateCastleRights(move *Move) {
-	if (move.kingCastle[move.fromColor]) {
-		board.kingCastle[move.fromColor] = !board.kingCastle[move.fromColor]
-	}
-
-	if (move.queenCastle[move.fromColor]) {
-		board.queenCastle[move.fromColor] = !board.queenCastle[move.fromColor]
-	}
+	board.kingCastle[WHITE] = move.to.kingCastle[WHITE]
+	board.kingCastle[BLACK] = move.to.kingCastle[BLACK]
 }
 
-func (board *Board) findEmptySpaces() uint64 {
-	return ^(board.color[WHITE] | board.color[BLACK])
-}
-
-func (board *Board) findBoard(pos uint64) Piece {
+func (board *Board) findPiece(pos uint64) Piece {
 	for idx, piece := range board.piece {
 		if ((piece & pos) != 0) {
 			return Piece(idx)
@@ -328,6 +308,10 @@ func (board *Board) getPieces(piece Piece, color Color) uint64 {
 	return board.piece[piece] & board.color[color]
 }
 
+func (board *Board) getEmptySet() uint64 {
+	return ^(board.color[WHITE] | board.color[BLACK])
+}
+
 func (board *Board) getKingSet(piece uint64, color Color) uint64 {
 	var moves uint64 = moveNorth(piece) | moveSouth(piece)
 	moves |= moveEast(piece) | moveWest(piece)
@@ -364,22 +348,49 @@ func (board *Board) getPawnSet(piece uint64, color Color) uint64 {
 		moves |= (moveNorth(piece) & board.piece[EMPTY])
 		// Check for double push
 		moves |= ((0xFF << 24) & moveNorth(moves) & board.piece[EMPTY])
-		// Check for north-east attack
-		moves |= (moveNEast(piece) & board.color[BLACK])
-		// Check for north-west attack
-		moves |= (moveNWest(piece) & board.color[BLACK])
 	} else {
 		// Check for single push
 		moves |= (moveSouth(piece) & board.piece[EMPTY])
 		// Check for double push
 		moves |= ((0xFF << 32) & moveSouth(moves) & board.piece[EMPTY])
+	}
+	moves |= board.getPawnAttackSet(piece, color)
+	return moves
+}
+
+func (board *Board) getPawnAttackSet(piece uint64, color Color) uint64 {
+	var moves uint64 = 0
+	if (color == WHITE) {
+		// Check for north-east attack
+		moves |= (moveNEast(piece) & board.color[BLACK])
+		// Check for north-west attack
+		moves |= (moveNWest(piece) & board.color[BLACK])
+	} else {
 		// Check for south-east attack
 		moves |= (moveSEast(piece) & board.color[WHITE])
 		// Check for south-west attack
 		moves |= (moveSWest(piece) & board.color[WHITE])
 	}
-
 	return moves
+}
+
+func (board *Board) getPieceSet(piece Piece) GetSet {
+	switch (piece) {
+		case KING:
+			return board.getKingSet
+		case QUEEN:
+			return board.getQueenSet
+		case ROOK:
+			return board.getRookSet
+		case BISHOP:
+			return board.getBishopSet
+		case KNIGHT:
+			return board.getKnightSet
+		case PAWN:
+			return board.getPawnSet
+		default:
+			return nil
+	}
 }
 
 func (board *Board) isKingInCheck(color Color) bool {
