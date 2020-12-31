@@ -45,8 +45,6 @@ func (engine *DefaultEngine) getGameChannel() chan DefaultGameMsg {
 
 func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	fmt.Println(engine.game.GetFENString())
 	printBoard(engine.game.GetFENString())
 
 	gameMsg := DefaultGameMsg{}
@@ -67,9 +65,7 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 			fmt.Println(err)
 		} else {
 			engine.game.MakeMove(move)
-			fmt.Println(engine.game.GetFENString())
 			printBoard(engine.game.GetFENString())
-			// printBoard(engine.game.board, engine.game.color)
 			var gameStatus goengine.GameStatus = engine.game.GetGameStatus()
 			switch (gameStatus) {
 			case goengine.WHITE_WON:
