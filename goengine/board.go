@@ -110,7 +110,9 @@ func (board *Board) processMove(move *Move) error {
 	move.toBoard = board.findBoard(move.to)
 	move.toColor = board.findColor(move.to)
 
-	if (move.toBoard == EMPTY) {
+	if (move.fromBoard == EMPTY) {
+		return errors.New("Piece does not exist at square.")
+	} else if (move.toBoard == EMPTY) {
 		move.toBoard = move.fromBoard
 		move.toColor = move.fromColor
 	}

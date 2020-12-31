@@ -61,30 +61,36 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 
 		from, to := engine.game.ProcessCommand(cmd)
 		move, err := engine.game.CreateMove(from, to)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
 		err = engine.game.CheckMove(move)
 		if err != nil {
 			fmt.Println(err)
-		} else {
-			engine.game.MakeMove(move)
-			printBoard(engine.game.GetFENString())
-			var gameStatus goengine.GameStatus = engine.game.GetGameStatus()
-			switch (gameStatus) {
-			case goengine.WHITE_WON:
-				fmt.Println("White won!")
-				gameMsg.gameStatus = "mate"
-				engine.gameChannel <- gameMsg
-				return
-			case goengine.BLACK_WON:
-				fmt.Println("Black won!")
-				gameMsg.gameStatus = "mate"
-				engine.gameChannel <- gameMsg
-				return
-			case goengine.DRAW:
-				fmt.Println("Draw!")
-				gameMsg.gameStatus = "mate"
-				engine.gameChannel <- gameMsg
-				return
-			}
+			continue
+		}
+
+		engine.game.MakeMove(move)
+		printBoard(engine.game.GetFENString())
+		var gameStatus goengine.GameStatus = engine.game.GetGameStatus()
+		switch (gameStatus) {
+		case goengine.WHITE_WON:
+			fmt.Println("White won!")
+			gameMsg.gameStatus = "mate"
+			engine.gameChannel <- gameMsg
+			return
+		case goengine.BLACK_WON:
+			fmt.Println("Black won!")
+			gameMsg.gameStatus = "mate"
+			engine.gameChannel <- gameMsg
+			return
+		case goengine.DRAW:
+			fmt.Println("Draw!")
+			gameMsg.gameStatus = "mate"
+			engine.gameChannel <- gameMsg
+			return
 		}
 	}
 }
