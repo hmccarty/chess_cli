@@ -14,6 +14,6 @@ moderately enough. Eventually however, I wanted to explore Deep RL networks, so 
 - ~~Create board representation (bitboard)~~
 - ~~Add basic, legal move generation~~
 - ~~Add endgame detection~~
-- Add support for castling, promotions and EP
+- Add support for ~~castling~~, ~~promotions~~ and EP
 - Create engine test cases
 - RL Self-Play Support
