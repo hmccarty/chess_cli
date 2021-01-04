@@ -1,0 +1,73 @@
+[Event "CCRL 40/15"]
+[Site "CCRL"]
+[Date "2017.01.01"]
+[Round "542.1.215"]
+[White "Deep Shredder 13 64-bit 4CPU"]
+[Black "Hannibal 1.7 64-bit 4CPU"]
+[Result "0-1"]
+[ECO "A15"]
+[Opening "English opening"]
+[PlyCount "119"]
+[WhiteElo "3279"]
+[BlackElo "3155"]
+
+1. Nf3 Nf6 2. c4 b6 3. Nc3 Bb7 4. d4 e6 5. a3 d5 6. Qc2 dxc4 7. e4 c5 8. dxc5
+Bxc5 9. Bxc4 Nbd7 10. O-O O-O 11. Bf4 Nh5 12. Bg5 Qb8 13. Qd2 Ndf6 14. Qe2 Nf4
+15. Qd2 Ng6 16. Bxf6 gxf6 17. Qe2 Rd8 18. Rad1 Nf4 19. Rxd8+ Qxd8 20. Qc2 a6
+21. a4 f5 22. g3 Nh3+ 23. Kg2 Nxf2 24. Rxf2 Bxf2 25. Kxf2 b5 26. Bd3 b4 27. Nb1
+Qb6+ 28. Kf1 Qe3 29. Qe2 Qxe2+ 30. Bxe2 fxe4 31. Ne5 Bd5 32. Nd2 Rc8 33. Nec4
+f5 34. Ke1 Kg7 35. Kf2 Kf6 36. Ne3 b3 37. Bd1 Ke5 38. h4 Kf6 39. Ke2 Rb8 40.
+Nb1 a5 41. Nc3 Bb7 42. Kf2 Ba6 43. Nb1 Rb4 44. Nc3 Ke5 45. Bh5 Bd3 46. Be2 Bxe2
+47. Kxe2 Kd4 48. Nb5+ Kc5 49. Nc7 Kd6 50. Nb5+ Kc6 51. Nc3 Kc5 52. Nf1 Rd4 53.
+Ne3 Kb4 54. Nb5 Rd7 55. Nc3 Rd3 56. Ncd1 Kxa4 57. Nf2 Rc3 58. Nh3 Rc6 59. g4
+fxg4 60. Nf4 0-1
+
+[Event "CCRL 40/15"]
+[Site "CCRL"]
+[Date "2017.01.01"]
+[Round "542.1.216"]
+[White "Hannibal 1.7 64-bit 4CPU"]
+[Black "Deep Shredder 13 64-bit 4CPU"]
+[Result "1/2-1/2"]
+[ECO "A15"]
+[Opening "English opening"]
+[PlyCount "130"]
+[WhiteElo "3155"]
+[BlackElo "3279"]
+
+1. Nf3 Nf6 2. c4 b6 3. Nc3 Bb7 4. d4 e6 5. a3 d5 6. Qc2 dxc4 7. e4 c5 8. dxc5
+Bxc5 9. Bxc4 Nbd7 10. O-O O-O 11. Bf4 Nh5 12. Bg5 Qb8 13. Rad1 Ne5 14. Nxe5
+Qxe5 15. Qd2 h6 16. Be3 Bxe3 17. Qxe3 Rfd8 18. Rfe1 Rac8 19. Bf1 Nf6 20. Rxd8+
+Rxd8 21. f3 g5 22. b4 Bc6 23. Nd1 Ba4 24. Nf2 Kg7 25. Rc1 Qb2 26. g3 Bc2 27.
+Re1 Qd4 28. Qxd4 Rxd4 29. Bb5 a5 30. bxa5 bxa5 31. Kf1 g4 32. e5 Nd5 33. fxg4
+Nc3 34. Ba6 Nb1 35. Rc1 Nxa3 36. Ra1 Ra4 37. Ke2 Nb5 38. Rxa4 Bxa4 39. Bxb5
+Bxb5+ 40. Kd2 f6 41. exf6+ Kxf6 42. h4 a4 43. g5+ hxg5 44. Ne4+ Kg6 45. Nxg5 e5
+46. Kc3 Bc6 47. Kb4 Bd7 48. Ne4 Kf5 49. Nd6+ Kg4 50. Ne4 Bf5 51. Nd6 Bg6 52.
+Nc4 e4 53. Ne5+ Kf5 54. Nc4 Be8 55. Nd6+ Ke5 56. Nc4+ Kd4 57. Nd6 Bd7 58. Nxe4
+Kxe4 59. h5 Kf5 60. g4+ Kf6 61. h6 Kf7 62. g5 Kg6 63. Ka3 Bc6 64. Ka2 Be4 65.
+Kb2 Kxg5 1/2-1/2
+
+[Event "CCRL 40/15"]
+[Site "CCRL"]
+[Date "2017.01.01"]
+[Round "542.1.217"]
+[White "Deep Shredder 13 64-bit 4CPU"]
+[Black "Komodo 10.2 64-bit 4CPU"]
+[Result "1/2-1/2"]
+[ECO "A15"]
+[Opening "English opening"]
+[PlyCount "117"]
+[WhiteElo "3279"]
+[BlackElo "3354"]
+
+1. Nf3 Nf6 2. c4 b6 3. Nc3 Bb7 4. d4 e6 5. a3 d5 6. cxd5 Nxd5 7. Bd2 Nf6 8. Rc1
+a6 9. Bf4 Bd6 10. Bg5 Nbd7 11. e4 e5 12. Bc4 O-O 13. O-O b5 14. Bd5 c6 15. Ba2
+h6 16. dxe5 Nxe5 17. Bf4 Nxf3+ 18. Qxf3 Qc7 19. Bxd6 Qxd6 20. Rfe1 c5 21. e5
+Bxf3 22. exd6 Bc6 23. Red1 Rac8 24. Nd5 Nxd5 25. Bxd5 c4 26. Rd4 Rfd8 27. Bxc6
+Rxc6 28. d7 Kf8 29. Kf1 f6 30. a4 bxa4 31. h4 Kf7 32. Rdxc4 Rxc4 33. Rxc4 Rxd7
+34. Rxa4 Rd2 35. Rxa6 Rxb2 36. Ra7+ Kg6 37. h5+ Kxh5 38. Rxg7 f5 39. g3 Rb6 40.
+Kg2 Rb3 41. Rc7 Kg6 42. Rc6+ Kg5 43. Kh3 Rf3 44. Kg2 Ra3 45. Rb6 Ra4 46. Rb8
+Ra2 47. Rf8 Kg6 48. Rc8 Kg5 49. Rc5 h5 50. Rc4 Kf6 51. Rc6+ Kg5 52. Kf3 Ra4 53.
+Rc8 Rb4 54. Rh8 Ra4 55. Kg2 f4 56. Rg8+ Kf5 57. Rf8+ Ke5 58. Rxf4 Rxf4 59.
+gxf4+ 1/2-1/2
+

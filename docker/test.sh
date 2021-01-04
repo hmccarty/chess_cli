@@ -7,4 +7,4 @@ docker run -it --rm \
         -v $DEV_DIR:/app \
         --name gochess-dev \
         gochess \
-        go test
+        go test github.com/hmccarty/gochess/tests
