@@ -6,6 +6,12 @@ import (
 	"github.com/hmccarty/gochess/goengine"
 )
 
+func printRawBitBoard(board uint64) {
+	for i := 8; i > 0; i-- {
+	fmt.Printf("%08b\n", uint8(board >> (8 * (i - 1))))
+	}
+}
+
 func printBoard(fen string) {
 	var n int = 64
 	fmt.Println("   A  B  C  D  E  F  G  H ")

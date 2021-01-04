@@ -328,6 +328,25 @@ func (board *Board) getPieces(piece Piece, color Color) uint64 {
 	return board.piece[piece] & board.color[color]
 }
 
+func (board *Board) getPieceSet(set Piece, piece uint64, color Color) uint64 {
+	switch set {
+	case KING:
+		return board.getKingSet(piece, color)
+	case QUEEN:
+		return board.getQueenSet(piece, color)
+	case ROOK:
+		return board.getRookSet(piece, color)
+	case BISHOP:
+		return board.getBishopSet(piece, color)
+	case KNIGHT:
+		return board.getKnightSet(piece, color)
+	case PAWN:
+		return board.getPawnSet(piece, color)
+	default:
+		return 0
+	}
+}
+
 func (board *Board) getKingSet(piece uint64, color Color) uint64 {
 	var moves uint64 = moveNorth(piece) | moveSouth(piece)
 	moves |= moveEast(piece) | moveWest(piece)

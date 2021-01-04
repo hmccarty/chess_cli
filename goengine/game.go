@@ -30,14 +30,91 @@ func (game *Game) GetFENString() string {
 }
 
 func (game *Game) ProcessCommand(cmd string) (uint64, uint64) {
+	var from uint64 = 0
+	var to uint64 = 0
+
+	if cmd == "O-O" {
+		from = game.board.piece[KING] & game.board.color[game.turn]
+		return from, (from >> 2)
+	} else if cmd == "O-O-O" {
+		from = game.board.piece[KING] & game.board.color[game.turn]
+		return from, (from << 2)
+	}
+
 	var cmdData []byte = []byte(cmd)
-	var startCol uint8 = 8 - (cmdData[0] - ASCII_COL_OFFSET)
-	var startRow uint8 = cmdData[1] - ASCII_ROW_OFFSET
-	var endCol uint8 = 8 - (cmdData[2] - ASCII_COL_OFFSET)
-	var endRow uint8 = cmdData[3] - ASCII_ROW_OFFSET
-	var from uint64 = 1 << ((startRow * 8) + startCol)
-	var to uint64 = 1 << ((endRow * 8) + endCol)
-	return from, to
+
+	// If move causes check, remove 
+	if cmdData[len(cmdData) - 1:][0] == byte('+') {
+		cmdData = cmdData[:len(cmdData) - 1]
+	}
+
+	// Find square the piece is moving to
+	var toCol uint8 = 8 - (cmdData[len(cmdData) - 2:len(cmdData) - 1][0] - ASCII_COL_OFFSET)
+	var toRow uint8 = byte(cmdData[len(cmdData) - 1:][0]) - ASCII_ROW_OFFSET
+	to = 1 << ((toRow * 8) + toCol)
+
+	// Store additional info about piece
+	var additionalInfo []byte
+
+	// Determine type of piece being moved
+	var fromPiece Piece
+	switch cmdData[0] {
+	case 'K':
+		fromPiece = KING
+		additionalInfo = cmdData[1:len(cmdData) - 2]
+	case 'Q':
+		fromPiece = QUEEN
+		additionalInfo = cmdData[1:len(cmdData) - 2]
+	case 'R':
+		fromPiece = ROOK
+		additionalInfo = cmdData[1:len(cmdData) - 2]
+	case 'B':
+		fromPiece = BISHOP
+		additionalInfo = cmdData[1:len(cmdData) - 2]
+	case 'N':
+		fromPiece = KNIGHT
+		additionalInfo = cmdData[1:len(cmdData) - 2]
+	default:
+		fromPiece = PAWN
+		additionalInfo = cmdData[0:len(cmdData) - 2]
+	}
+
+	// Search all possible pieces
+	var pieces uint64 = game.board.piece[fromPiece] & game.board.color[game.turn]
+	for pieces > 0 {
+		var idx uint8 = bitScanForward(pieces)
+		var piece uint64 = 1 << idx
+
+		// If square piece is moving to is in piece range
+		if (game.board.getPieceSet(fromPiece, piece, game.turn) & to) != 0 {
+			if len(additionalInfo) == 0 {
+				return piece, to
+			}
+
+			var valid bool = true
+			for i := 0; i < len(additionalInfo); i++ {
+				if additionalInfo[i] >= byte('a') && additionalInfo[i] <= byte('h') {
+					if (8 - (idx % 8)) != (additionalInfo[i] - ASCII_COL_OFFSET) {
+						valid = false
+						break
+					}
+				} else if additionalInfo[i] >= byte('1') && additionalInfo[i]  <= byte('8') {
+					if (idx / 8) != (additionalInfo[i] - ASCII_ROW_OFFSET) {
+						valid = false
+						break
+					}
+				}
+			}
+
+			if valid {
+				return piece, to
+			}
+		}
+
+		pieces ^= piece
+	}
+
+	return 0, 0
 }
 
 func (game *Game) CreateMove(from uint64, to uint64) (*Move, error) {

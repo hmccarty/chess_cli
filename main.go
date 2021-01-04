@@ -5,29 +5,20 @@ import (
 	"bufio"
 	"fmt"
 	"sync"
+	"strings"
 )
 
-type Engine interface {
-	Setup()
-	getUser()
-	getGameChannel()
-}
-
-type User interface {
-	getID() string
-}
-
-type GameMsg interface {
-	getType() string
-	isUserWhite() bool
-	getGameStatus() string
-	getCurrMove() string
-	getWinner() string
-}
-
 func main() {
-	//engine := lichess.Lichess{}
 	engine := DefaultEngine{}
+
+	// Create games from PGN format
+	engine.scanPGN("tests/files/pgn_data.pgn", 3)
+
+	// Creates new game within console
+	startClientGame(engine)
+}
+
+func startClientGame(engine DefaultEngine) {
 	gameChannel := make(chan DefaultGameMsg)
 	inputChannel := make(chan string)
 	engine.Setup(gameChannel, inputChannel)
@@ -57,6 +48,6 @@ func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
 
 		fmt.Print("Action (move, resign or draw): ")
 		response, _ := reader.ReadString('\n')
-		inputChannel <- response
+		inputChannel <- strings.TrimSpace(response)
 	}
 }
