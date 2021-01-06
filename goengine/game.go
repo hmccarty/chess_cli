@@ -82,6 +82,7 @@ func (game *Game) ProcessCommand(cmd string) (uint64, uint64) {
 	}
 
 	// Search all possible pieces
+	// TODO: Check that piece move wouldn't cause check, otherwise look at using other pieces
 	var pieces uint64 = game.board.piece[fromPiece] & game.board.color[game.turn]
 	for pieces > 0 {
 		var idx uint8 = bitScanForward(pieces)
