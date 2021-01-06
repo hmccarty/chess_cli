@@ -1,14 +1,16 @@
 package goengine
 
 import (
-	//"fmt"
+	"fmt"
 	"errors"
+	"github.com/fatih/color"
 )
 
 type Game struct {
 	board *Board
 	turn Color
 	points [2]int8
+	status GameStatus
 }
 
 type GameStatus uint8
@@ -84,7 +86,6 @@ func (game *Game) ProcessCommand(cmd string) (uint64, uint64) {
 	for pieces > 0 {
 		var idx uint8 = bitScanForward(pieces)
 		var piece uint64 = 1 << idx
-
 		// If square piece is moving to is in piece range
 		if (game.board.getPieceSet(fromPiece, piece, game.turn) & to) != 0 {
 			if len(additionalInfo) == 0 {
@@ -129,9 +130,12 @@ func (game *Game) CheckMove(move *Move) error {
 		return errors.New("Cannot move opponent's piece.")
 	}
 
+	var prevEp uint64 = game.board.ep
 	game.MakeMove(move)
+	game.board.ep = prevEp
 	var inCheck bool = game.board.isKingInCheck(move.fromColor)
 	game.UndoMove(move)
+	game.board.ep = prevEp
 	
 	if (inCheck) {
 		return errors.New("King would be in check.")
@@ -155,8 +159,11 @@ func (game *Game) MakeMove(move *Move) {
 			move.toBoard = QUEEN
 		}
 		game.board.quietMove(move)
+	case EP_CAPTURE:
+		game.board.epCapture(move)
 	}
 
+	game.board.ep = move.ep
 	game.board.updateCastleRights(move)
 	game.turn = oppColor[game.turn]
 }
@@ -227,6 +234,7 @@ func (game *Game) getPieceMoves(pieces uint64, color Color,
 }
 
 func (game *Game) GetGameStatus() GameStatus {
+	return game.status
 	var moves []*Move = game.GetMoves()
 
 	// If no legal moves, checkmate
@@ -239,4 +247,17 @@ func (game *Game) GetGameStatus() GameStatus {
 	}
 
 	return IN_PLAY
+}
+
+func (game *Game) SetGameStatus(status string) {
+	switch status {
+	case "0-1":
+		game.status = BLACK_WON
+	case "1-0":
+		game.status = WHITE_WON
+	case "1/2-1/2":
+		game.status = DRAW
+	case "*":
+		game.status = IN_PLAY
+	}
 }

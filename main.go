@@ -12,10 +12,10 @@ func main() {
 	engine := DefaultEngine{}
 
 	// Create games from PGN format
-	engine.scanPGN("tests/files/pgn_data.pgn", 3)
+	engine.scanPGN("goengine/evaluator/dataset/2017-01.bare.[7705].pgn", 5000)
 
 	// Creates new game within console
-	startClientGame(engine)
+	//startClientGame(engine)
 }
 
 func startClientGame(engine DefaultEngine) {

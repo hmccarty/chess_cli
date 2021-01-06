@@ -57,7 +57,7 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 	printBoard(engine.game.GetFENString())
 
 	for {
-		printMoveList(engine.game.GetMoves())
+		//printMoveList(engine.game.GetMoves())
 		engine.gameChannel <- gameMsg
 		cmd := <- engine.inputChannel
 

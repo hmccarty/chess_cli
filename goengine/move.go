@@ -4,6 +4,7 @@ type Move struct {
 	flag Flag
 	kingCastle [2]bool
 	queenCastle [2]bool
+	ep uint64
 	points int8
 	from uint64
 	fromBoard Piece
@@ -20,6 +21,7 @@ func (move *Move) copy() *Move {
 	new.kingCastle[BLACK] = move.kingCastle[BLACK]
 	new.queenCastle[WHITE] = move.queenCastle[WHITE]
 	new.queenCastle[BLACK] = move.queenCastle[BLACK]
+	new.ep = move.ep
 	new.points = move.points
 	new.from = move.from
 	new.fromBoard = move.fromBoard

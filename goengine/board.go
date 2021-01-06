@@ -8,6 +8,7 @@ import (
 type Board struct {
 	piece [7]uint64
 	color [2]uint64
+	ep uint64
 	rayAttacks [64][8]uint64
 	kingCastle [2]bool
 	queenCastle [2]bool
@@ -149,35 +150,40 @@ func (board *Board) processMove(move *Move) error {
 	case PAWN:
 		if ((move.to & board.getPawnSet(move.from, move.fromColor)) == 0) {
 			return errors.New("Invalid pawn move.")
-		} else if ((move.to & EIGTH_RANK) != 0) {
+		} else if (move.to & EIGTH_RANK) != 0 {
 			move.flag = PROMOTION
+		} else if (move.to & board.ep) != 0 {
+			move.flag = EP_CAPTURE
+			move.points = pieceToPoints[PAWN]
+		} else {
+			if move.fromColor == WHITE {
+				if (moveNorth(moveNorth(move.from)) & move.to) != 0 {
+					move.ep = move.to | moveSouth(move.to)
+				}
+			} else {
+				if (moveSouth(moveSouth(move.from)) & move.to) != 0 {
+					move.ep = move.to | moveNorth(move.to)
+				}
+			}
 		}
 	case EMPTY:
 		return errors.New("Piece doesn't exist at square.")
 	}
 
-	if (move.to & board.piece[EMPTY] == 0) {
+	if (move.to & board.piece[EMPTY]) == 0 {
 		move.flag = CAPTURE
 		move.points = pieceToPoints[move.toBoard]
 	}
 
 	// TODO: Replace with branchless implementation
 	if (move.fromBoard == KING) {
-		if (board.kingCastle[move.fromColor] == true) {
-			move.kingCastle[move.fromColor] = true
-		}
-		if (board.queenCastle[move.fromColor] == true) {
-			move.queenCastle[move.fromColor] = true
-		}
+		move.kingCastle[move.fromColor] = board.kingCastle[move.fromColor]
+		move.queenCastle[move.fromColor] = board.queenCastle[move.fromColor]
 	} else if (move.fromBoard == ROOK) {
 		if ((move.from & A_FILE_CORNERS) != 0) {
-			if (board.queenCastle[move.fromColor] == true) {
-				move.queenCastle[move.fromColor] = true
-			}
+			move.queenCastle[move.fromColor] = board.queenCastle[move.fromColor]
 		} else if ((move.from & H_FILE_CORNERS) != 0) {
-			if (board.kingCastle[move.fromColor] == true) {
-				move.kingCastle[move.fromColor] = true
-			}
+			move.kingCastle[move.fromColor] = board.kingCastle[move.fromColor]
 		}
 	}
 
@@ -202,6 +208,13 @@ func (board *Board) capture(move *Move) {
 	board.piece[move.fromBoard] ^= (move.from ^ move.to)
 	board.color[move.fromColor] ^= (move.from ^ move.to)
 
+	board.piece[EMPTY] = board.findEmptySpaces()
+}
+
+func (board *Board) epCapture(move *Move) {
+	board.piece[PAWN] ^= board.ep | move.from
+	board.color[move.fromColor] ^= (move.from ^ move.to)
+	board.color[oppColor[move.fromColor]] ^= (board.ep ^ move.to)
 	board.piece[EMPTY] = board.findEmptySpaces()
 }
 
@@ -383,21 +396,33 @@ func (board *Board) getPawnSet(piece uint64, color Color) uint64 {
 		moves |= (moveNorth(piece) & board.piece[EMPTY])
 		// Check for double push
 		moves |= ((0xFF << 24) & moveNorth(moves) & board.piece[EMPTY])
-		// Check for north-east attack
-		moves |= (moveNEast(piece) & board.color[BLACK])
-		// Check for north-west attack
-		moves |= (moveNWest(piece) & board.color[BLACK])
 	} else {
 		// Check for single push
 		moves |= (moveSouth(piece) & board.piece[EMPTY])
 		// Check for double push
 		moves |= ((0xFF << 32) & moveSouth(moves) & board.piece[EMPTY])
-		// Check for south-east attack
-		moves |= (moveSEast(piece) & board.color[WHITE])
-		// Check for south-west attack
-		moves |= (moveSWest(piece) & board.color[WHITE])
 	}
+	moves |= board.getPawnAttackSet(piece, color)
+	return moves
+}
 
+func (board *Board) getPawnAttackSet(piece uint64, color Color) uint64 {
+	var moves uint64 = 0
+	if (color == WHITE) {
+		// Check for north-east attack
+		moves |= moveNEast(piece) & board.color[BLACK]
+		moves |= moveNEast(piece) & moveNorth(board.color[BLACK]) & board.ep
+		// Check for north-west attack
+		moves |= moveNWest(piece) & board.color[BLACK]
+		moves |= moveNWest(piece) & moveNorth(board.color[BLACK]) & board.ep
+	} else {
+		// Check for south-east attack
+		moves |= moveSEast(piece) & board.color[WHITE]
+		moves |= moveSEast(piece) & moveSouth(board.color[WHITE]) & board.ep
+		// Check for south-west attack
+		moves |= moveSWest(piece) & board.color[WHITE]
+		moves |= moveSWest(piece) & moveSouth(board.color[WHITE]) & board.ep
+	}
 	return moves
 }
 
@@ -407,7 +432,7 @@ func (board *Board) isKingInCheck(color Color) bool {
 }
 
 func (board *Board) canCastleKingSide(color Color) bool {
-	if (!board.kingCastle[color]) {
+	if !board.kingCastle[color] {
 		return false
 	}
 
