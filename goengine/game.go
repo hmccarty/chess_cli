@@ -258,7 +258,7 @@ func (game *Game) undoMove() {
 	game.turn = oppColor[game.turn]
 }
 
-func (game *Game) GetValidMoves() []*Move {
+func (game *Game) getValidMoves() []*Move {
 	var moves []*Move
 	for i := 0; i < 6; i++ {
 		moves = append(moves, game.getPieceMoves(Piece(i), game.turn)...)
