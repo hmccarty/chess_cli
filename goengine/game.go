@@ -5,6 +5,9 @@ import (
 	"errors"
 )
 
+const ASCII_ROW_OFFSET = 49
+const ASCII_COL_OFFSET = 96
+
 type Game struct {
 	board *Board
 	moves []*Move
@@ -36,16 +39,16 @@ func (game *Game) GetFENString() string {
 	fen += colorToString[game.turn]
 	fen += " "
 	if (game.board.castle[WHITE] | game.board.castle[BLACK]) != 0 {
-		if (game.board.castle[WHITE] & KING_CASTLE_MASK) != 0 {
+		if (game.board.castle[WHITE] & K_CASTLE_MASK) != 0 {
 			fen += "K"
 		}
-		if (game.board.castle[WHITE] & QUEEN_CASTLE_MASK) != 0 {
+		if (game.board.castle[WHITE] & Q_CASTLE_MASK) != 0 {
 			fen += "Q"
 		}
-		if (game.board.castle[BLACK] & QUEEN_CASTLE_MASK) != 0 {
+		if (game.board.castle[BLACK] & Q_CASTLE_MASK) != 0 {
 			fen += "k"
 		}
-		if (game.board.castle[BLACK] & QUEEN_CASTLE_MASK) != 0 {
+		if (game.board.castle[BLACK] & Q_CASTLE_MASK) != 0 {
 			fen += "q"
 		}
 	} else {
@@ -70,19 +73,19 @@ func (game *Game) PushSAN(cmd string) error {
 	var move *Move = new(Move)
 
 	if cmd == "O-O" {
-		move.flag = KING_SIDE_CASTLE
+		move.flag = K_CASTLE
 		move.from = game.board.piece[KING] & game.board.color[game.turn]
 		move.to = move.from >> 2
-		err := game.HandleMove(move)
+		err := game.handleMove(move)
 		if err != nil {
 			return err
 		}
 		return nil
 	} else if cmd == "O-O-O" {
-		move.flag = QUEEN_SIDE_CASTLE
+		move.flag = Q_CASTLE
 		move.from = game.board.piece[KING] & game.board.color[game.turn]
 		move.to = move.from << 2
-		err := game.HandleMove(move)
+		err := game.handleMove(move)
 		if err != nil {
 			return err
 		}
@@ -106,31 +109,37 @@ func (game *Game) PushSAN(cmd string) error {
 
 	// Determine type of piece being moved
 	var symbolExists bool
-	move.fromBoard, symbolExists = runeToPiece[rune(cmdData[0])]
+	move.piece, symbolExists = runeToPiece[rune(cmdData[0])]
 	if !symbolExists {
-		move.fromBoard = PAWN
+		move.piece = PAWN
 		additionalInfo = cmdData[0:len(cmdData) - 2]
 	} else {
 		additionalInfo = cmdData[1:len(cmdData) - 2]
 	}
 
 	// Search all possible pieces
-	var pieces uint64 = game.board.piece[move.fromBoard] & game.board.color[game.turn]
+	var pieces uint64 = game.board.piece[move.piece]
+	pieces &= game.board.color[game.turn]
+
 	for pieces > 0 {
-		var idx uint8 = bitScanForward(pieces)
-		var piece uint64 = 1 << idx
+		var sqr uint8 = bitScanForward(pieces)
+		var piece uint64 = 1 << sqr
 		move.from = piece
-		// If square piece is moving to is in piece range
-		if (game.board.getPieceSet(move.fromBoard, piece, game.turn) & move.to) != 0 {
+		var set uint64 = game.board.getPieceSet(move.piece, piece, game.turn)
+		if (set & move.to) != 0 {
 			var valid bool = true
 			for i := 0; i < len(additionalInfo); i++ {
-				if additionalInfo[i] >= byte('a') && additionalInfo[i] <= byte('h') {
-					if (8 - (idx % 8)) != (additionalInfo[i] - ASCII_COL_OFFSET) {
+				if (additionalInfo[i] >= byte('a')) &&
+				   (additionalInfo[i] <= byte('h')) {
+					col := 8 - (sqr % 8)
+					if col != (additionalInfo[i] - ASCII_COL_OFFSET) {
 						valid = false
 						break
 					}
-				} else if additionalInfo[i] >= byte('1') && additionalInfo[i]  <= byte('8') {
-					if (idx / 8) != (additionalInfo[i] - ASCII_ROW_OFFSET) {
+				} else if (additionalInfo[i] >= byte('1')) &&
+						  (additionalInfo[i]  <= byte('8')) {
+					row := sqr / 8
+					if row != (additionalInfo[i] - ASCII_ROW_OFFSET) {
 						valid = false
 						break
 					}
@@ -138,7 +147,7 @@ func (game *Game) PushSAN(cmd string) error {
 			}
 
 			if valid {
-				err := game.HandleMove(move)
+				err := game.handleMove(move)
 				if err != nil {
 					return err
 				}
@@ -152,7 +161,7 @@ func (game *Game) PushSAN(cmd string) error {
 	return errors.New("Couldn't find piece to carry out move.")
 }
 
-func (game *Game) HandleMove(move *Move) error {
+func (game *Game) handleMove(move *Move) error {
 	move.fullmove = game.fullmove
 	move.halfmove = game.halfmove + 1
 	
@@ -161,33 +170,33 @@ func (game *Game) HandleMove(move *Move) error {
 		return err
 	}
 
-	if move.fromColor != game.turn {
+	if move.color != game.turn {
 		return errors.New("Cannot move opponent's piece.")
 	}
 
-	game.MakeMove(move)
-	if (game.board.isKingInCheck(move.fromColor)) {
-		game.UndoMove()
+	game.makeMove(move)
+	if (game.board.isKingInCheck(move.color)) {
+		game.undoMove()
 		return errors.New("King would be in check.")
 	}
 
 	return nil
 }
 
-func (game *Game) MakeMove(move *Move) {
+func (game *Game) makeMove(move *Move) {
 	// Modifying board based on move data
 	switch move.flag {
 	case QUIET:
 		game.board.quietMove(move)
 	case CAPTURE:
 		game.board.capture(move)
-	case KING_SIDE_CASTLE:
+	case K_CASTLE:
 		game.board.castleKingSide(move)
-	case QUEEN_SIDE_CASTLE:
+	case Q_CASTLE:
 		game.board.castleQueenSide(move)
 	case PROMOTION:
-		if (move.toBoard == PAWN) {
-			move.toBoard = QUEEN
+		if (move.target == PAWN) {
+			move.target = QUEEN
 		}
 		game.board.quietMove(move)
 	case EP_CAPTURE:
@@ -206,7 +215,7 @@ func (game *Game) MakeMove(move *Move) {
 	game.moves = append(game.moves, move)
 }
 
-func (game *Game) UndoMove() {
+func (game *Game) undoMove() {
 	var move *Move = game.moves[len(game.moves) - 1]
 
 	// Applying same board data to reverse last move
@@ -215,13 +224,13 @@ func (game *Game) UndoMove() {
 		game.board.quietMove(move)
 	case CAPTURE:
 		game.board.capture(move)
-	case KING_SIDE_CASTLE:
+	case K_CASTLE:
 		game.board.castleKingSide(move)
-	case QUEEN_SIDE_CASTLE:
+	case Q_CASTLE:
 		game.board.castleQueenSide(move)
 	case PROMOTION:
-		if (move.toBoard == PAWN) {
-			move.toBoard = QUEEN
+		if (move.target == PAWN) {
+			move.target = QUEEN
 		}
 		game.board.quietMove(move)
 	case EP_CAPTURE:
@@ -241,75 +250,58 @@ func (game *Game) UndoMove() {
 		game.fullmove = move.fullmove
 	} else {
 		game.board.ep = 0
-		game.board.castle[WHITE] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
-		game.board.castle[BLACK] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
+		game.board.castle[WHITE] = (K_CASTLE_MASK | Q_CASTLE_MASK)
+		game.board.castle[BLACK] = (K_CASTLE_MASK | Q_CASTLE_MASK)
 		game.halfmove = 0
 		game.fullmove = 1
 	}
 	game.turn = oppColor[game.turn]
 }
 
-func (game *Game) GetMoves() []*Move {
-	var list []*Move
-	var pieces uint64 = 0
-
-	pieces = game.board.getPieces(KING, game.turn)
-	list = append(list, game.getPieceMoves(pieces, game.turn, game.board.getKingSet)...)
-
-	pieces = game.board.getPieces(QUEEN, game.turn)
-	list = append(list, game.getPieceMoves(pieces, game.turn, game.board.getQueenSet)...)
-
-	pieces = game.board.getPieces(ROOK, game.turn)
-	list = append(list, game.getPieceMoves(pieces, game.turn, game.board.getRookSet)...)
-
-	pieces = game.board.getPieces(BISHOP, game.turn)
-	list = append(list, game.getPieceMoves(pieces, game.turn, game.board.getBishopSet)...)
-
-	pieces = game.board.getPieces(KNIGHT, game.turn)
-	list = append(list, game.getPieceMoves(pieces, game.turn, game.board.getKnightSet)...)
-
-	pieces = game.board.getPieces(PAWN, game.turn)
-	list = append(list, game.getPieceMoves(pieces, game.turn, game.board.getPawnSet)...)
-
-	return list
+func (game *Game) GetValidMoves() []*Move {
+	var moves []*Move
+	for i := 0; i < 6; i++ {
+		moves = append(moves, game.getPieceMoves(Piece(i), game.turn)...)
+	}
+	return moves
 }
 
-func (game *Game) getPieceMoves(pieces uint64, color Color,
-								getSet GetSet) []*Move {
-	var list []*Move 
-	for pieces != 0 {
+func (game *Game) getPieceMoves(piece Piece, color Color) []*Move {
+	var list []*Move
+	var pieceBB uint64 = game.board.getBB(piece, color)
+	for pieceBB != 0 {
 		// Get first piece set
-		var piece uint64 = 1 << bitScanForward(pieces)
-		var moves uint64 = getSet(piece, color)
+		var bb uint64 = 1 << bitScanForward(pieceBB)
+		var set uint64 = game.board.getPieceSet(piece, bb, color)
 
 		// Loop for every possible move in set
-		for moves != 0 {
+		for set != 0 {
 			var move *Move = new(Move)
-			move.from = piece
-			move.to = 1 << bitScanForward(moves)
-			err := game.HandleMove(move)
+			move.from = bb
+			move.to = 1 << bitScanForward(set)
+			err := game.handleMove(move)
 			if err == nil {
 				// If promotion, handle all possible promotions
 				// Else undo handled move and append to list
 				if move.flag == PROMOTION {
-					game.UndoMove()
+					game.undoMove()
 					potentialPromos := [3]Piece{ROOK, BISHOP, KNIGHT}
 					for _, promo := range potentialPromos {
-						move.toBoard = promo
-						err = game.HandleMove(move)
+						move.target = promo
+						err = game.handleMove(move)
 						if err == nil {
-							game.UndoMove()
+							game.undoMove()
 							list = append(list, move)
 						}
 					}
 				} else {
-					game.UndoMove()
+					game.undoMove()
 					list = append(list, move)
 				}
 			}
-			moves ^= move.to
+			set ^= move.to
 		}
-		pieces ^= piece
+		pieceBB ^= bb
 	}
 
 	return list
@@ -317,7 +309,7 @@ func (game *Game) getPieceMoves(pieces uint64, color Color,
 
 func (game *Game) GetGameStatus() GameStatus {
 	return game.status
-	var moves []*Move = game.GetMoves()
+	var moves []*Move = game.GetValidMoves()
 
 	// If no legal moves, checkmate
 	if (len(moves) == 0) {

@@ -2,33 +2,32 @@ package goengine
 
 type Move struct {
 	flag Flag
+	from uint64
+	to uint64
+	piece Piece
+	target Piece
+	color Color
 	castle [2]uint8
 	ep uint64
-	points int8
 	fullmove uint8
 	halfmove uint8
-	from uint64
-	fromBoard Piece
-	fromColor Color
-	to uint64
-	toBoard Piece
-	toColor Color
+	points int8
 }
 
 func (move *Move) copy() *Move {
-	var new *Move = new(Move)
-	new.flag = move.flag
-	new.castle[WHITE] = move.castle[WHITE]
-	new.castle[BLACK] = move.castle[BLACK]
-	new.ep = move.ep
-	new.points = move.points
-	new.from = move.from
-	new.fromBoard = move.fromBoard
-	new.fromColor = move.fromColor
-	new.to = move.to
-	new.toBoard = move.toBoard
-	new.toColor = move.toColor
-	return new
+	return &Move{
+		flag     : move.flag,
+		from     : move.from,
+		to       : move.to,
+		piece    : move.piece,
+		target   : move.target,
+		color    : move.color,
+		castle   : move.castle,
+		ep       : move.ep,
+		halfmove : move.halfmove,
+		fullmove : move.fullmove,
+		points   : move.points,
+	}
 }
 
 func (move *Move) ToString() string {
@@ -49,8 +48,8 @@ const (
 	UNKNOWN Flag = iota
 	QUIET
 	CAPTURE
-	KING_SIDE_CASTLE
-	QUEEN_SIDE_CASTLE
+	K_CASTLE
+	Q_CASTLE
 	EP_CAPTURE
 	PROMOTION
 )
