@@ -19,11 +19,13 @@ func (engine *GoEngine) Setup(inputChan chan string, outputChan chan string) {
 	engine.game.setup()
 }
 
-func (engine *GoEngine) ScanPGN(fileName string, numGames int) {
+func (engine *GoEngine) PGNToFEN(fileName string, numGames int) []string {
+	fen := make([]string, numGames)
 	games := scanGames(fileName, numGames)
-	for _, game := range games {
-		fmt.Println(game.getFENString())
+	for i, game := range games {
+		fen[i] = game.getFENString()
 	}
+	return fen
 }
 
 func (engine *GoEngine) Run(wg *sync.WaitGroup) {
