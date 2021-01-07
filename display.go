@@ -16,7 +16,7 @@ func printBoard(fen string) {
 	var n int = 64
 	fmt.Println("   A  B  C  D  E  F  G  H ")
 	fmt.Printf("%d  ", (n / 8))
-	for fen != "" {	
+	for n > 0 {	
 		piece := fen[0]
 		fen = fen[1:]
 

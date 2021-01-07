@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-func ScanGames(fileName string, numGames int) []Game {
+func scanGames(fileName string, numGames int) []Game {
 	var games []Game
 
 	file, err := os.Open(fileName)
@@ -50,8 +50,8 @@ func ScanGames(fileName string, numGames int) []Game {
 
 		// Setup Game struct
 		var game Game = Game{}
-		game.Setup()
-		game.SetGameStatus(header["Result"])
+		game.setup()
+		game.setGameStatus(header["Result"])
 
 		// Get list of moves in an algebraic format
 		moveRE := regexp.MustCompile(`[A-Za-z][\w-]+[\+]?`)
@@ -60,7 +60,7 @@ func ScanGames(fileName string, numGames int) []Game {
 		// Add each move into create Game struct
 		var err error
 		for _, cmd := range moves {
-			err = game.PushSAN(cmd)
+			err = game.pushSAN(cmd)
 			if err != nil {
 				fmt.Println(cmd)
 				fmt.Println(err)

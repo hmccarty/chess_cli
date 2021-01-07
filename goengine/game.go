@@ -26,14 +26,14 @@ const (
 	DRAW
 )
 
-func (game *Game) Setup() {
+func (game *Game) setup() {
 	game.board = new(Board)
 	game.board.setup()
 	game.fullmove = 1
 	game.turn = WHITE
 }
 
-func (game *Game) GetFENString() string {
+func (game *Game) getFENString() string {
 	var fen string = game.board.getFENBoard()
 	fen += " "
 	fen += colorToString[game.turn]
@@ -69,7 +69,7 @@ func (game *Game) GetFENString() string {
 	return fen
 }
 
-func (game *Game) PushSAN(cmd string) error {
+func (game *Game) pushSAN(cmd string) error {
 	var move *Move = new(Move)
 
 	if cmd == "O-O" {
@@ -307,7 +307,7 @@ func (game *Game) getPieceMoves(piece Piece, color Color) []*Move {
 	return list
 }
 
-func (game *Game) GetGameStatus() GameStatus {
+func (game *Game) getGameStatus() GameStatus {
 	return game.status
 	var moves []*Move = game.GetValidMoves()
 
@@ -323,7 +323,7 @@ func (game *Game) GetGameStatus() GameStatus {
 	return IN_PLAY
 }
 
-func (game *Game) SetGameStatus(status string) {
+func (game *Game) setGameStatus(status string) {
 	switch status {
 	case "0-1":
 		game.status = BLACK_WON

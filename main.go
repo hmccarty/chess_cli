@@ -6,48 +6,48 @@ import (
 	"fmt"
 	"sync"
 	"strings"
+	"github.com/hmccarty/gochess/goengine"
 )
 
 func main() {
-	engine := DefaultEngine{}
+	engine := goengine.GoEngine{}
 
 	// Create games from PGN format
-	//ngine.scanPGN("goengine/evaluator/dataset/2017-01.bare.[7705].pgn", 1)
+	//engine.scanPGN("goengine/evaluator/dataset/2017-01.bare.[7705].pgn", 1)
 
 	// Creates new game within console
 	startClientGame(engine)
 }
 
-func startClientGame(engine DefaultEngine) {
-	gameChannel := make(chan DefaultGameMsg)
-	inputChannel := make(chan string)
-	engine.Setup(gameChannel, inputChannel)
+func startClientGame(engine goengine.GoEngine) {
+	inputChan := make(chan string)
+	outputChan := make(chan string)
+	engine.Setup(outputChan, inputChan)
 
 	var wg sync.WaitGroup
 	wg.Add(2)
-	go handleGame(gameChannel, inputChannel, &wg)
-	go engine.run(&wg)
+	go handleGame(inputChan, outputChan, &wg)
+	go engine.Run(&wg)
 	wg.Wait()
 }
 
-func handleGame(gameChannel chan DefaultGameMsg, inputChannel chan string,
+func handleGame(inputChan chan string, outputChan chan string,
 				wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		gameUpdate := <-gameChannel
+		update := <-inputChan
 
-		switch gameUpdate.getType() {
-			case "gameState":
-				switch gameUpdate.getGameStatus() {
-					case "aborted", "resign", "timeout", "mate", "nostart":
-						return
-				}
+		switch update {
+			case "aborted", "resign", "timeout", "mate", "nostart":
+				return
+			default:
+				printBoard(update)
 		}
 
 		fmt.Print("Action (move, resign or draw): ")
 		response, _ := reader.ReadString('\n')
-		inputChannel <- strings.TrimSpace(response)
+		outputChan <- strings.TrimSpace(response)
 	}
 }
