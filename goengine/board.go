@@ -163,6 +163,7 @@ func (board *Board) processMove(move *Move) error {
 				}
 			}
 		}
+		move.halfmove = 0
 	case EMPTY:
 		return errors.New("Piece doesn't exist at square.")
 	}
@@ -170,6 +171,7 @@ func (board *Board) processMove(move *Move) error {
 	if (move.to & board.piece[EMPTY]) == 0 {
 		move.flag = CAPTURE
 		move.points = pieceToPoints[move.toBoard]
+		move.halfmove = 0
 	}
 
 	if (move.fromBoard == KING) {
@@ -574,6 +576,8 @@ const (
 	WHITE Color = iota
 	BLACK
 )
+
+var colorToString = [2]string{"w", "b"}
 
 var oppColor = map[Color]Color {
 	WHITE : BLACK,

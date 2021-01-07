@@ -1,6 +1,7 @@
 package goengine
 
 import (
+	"fmt"
 	"errors"
 )
 
@@ -8,6 +9,8 @@ type Game struct {
 	board *Board
 	moves []*Move
 	turn Color
+	halfmove uint8
+	fullmove uint8
 	points [2]int8
 	status GameStatus
 }
@@ -23,11 +26,44 @@ const (
 func (game *Game) Setup() {
 	game.board = new(Board)
 	game.board.setup()
+	game.fullmove = 1
 	game.turn = WHITE
 }
 
 func (game *Game) GetFENString() string {
-	return game.board.getFENBoard()
+	var fen string = game.board.getFENBoard()
+	fen += " "
+	fen += colorToString[game.turn]
+	fen += " "
+	if (game.board.castle[WHITE] | game.board.castle[BLACK]) != 0 {
+		if (game.board.castle[WHITE] & KING_CASTLE_MASK) != 0 {
+			fen += "K"
+		}
+		if (game.board.castle[WHITE] & QUEEN_CASTLE_MASK) != 0 {
+			fen += "Q"
+		}
+		if (game.board.castle[BLACK] & QUEEN_CASTLE_MASK) != 0 {
+			fen += "k"
+		}
+		if (game.board.castle[BLACK] & QUEEN_CASTLE_MASK) != 0 {
+			fen += "q"
+		}
+	} else {
+		fen += "-"
+	}
+	fen += " "
+	if game.board.ep != 0 {
+		var sqr uint64 = (game.board.ep ^ game.board.piece[PAWN]) & game.board.ep
+		var idx uint8 = bitScanForward(sqr)
+		// Convert row and column into algebraic notation
+		fen += string((idx / 8) + ASCII_COL_OFFSET)
+		fen += string((idx % 8) + ASCII_ROW_OFFSET)
+	} else {
+		fen += "-"
+	}
+	fen += " "
+	fen += fmt.Sprintf("%d %d", game.halfmove, game.fullmove)
+	return fen
 }
 
 func (game *Game) PushSAN(cmd string) error {
@@ -117,12 +153,15 @@ func (game *Game) PushSAN(cmd string) error {
 }
 
 func (game *Game) HandleMove(move *Move) error {
+	move.fullmove = game.fullmove
+	move.halfmove = game.halfmove + 1
+	
 	err := game.board.processMove(move)
 	if err != nil {
 		return err
 	}
 
-	if (move.fromColor != game.turn) {
+	if move.fromColor != game.turn {
 		return errors.New("Cannot move opponent's piece.")
 	}
 
@@ -159,6 +198,11 @@ func (game *Game) MakeMove(move *Move) {
 	game.board.castle[WHITE] = move.castle[WHITE]
 	game.board.castle[BLACK] = move.castle[BLACK]
 	game.turn = oppColor[game.turn]
+	game.halfmove = move.halfmove
+	game.fullmove = move.fullmove
+	if game.turn == WHITE {
+		game.fullmove += 1
+	}
 	game.moves = append(game.moves, move)
 }
 
@@ -193,10 +237,14 @@ func (game *Game) UndoMove() {
 		game.board.ep = move.ep
 		game.board.castle[WHITE] = move.castle[WHITE]
 		game.board.castle[BLACK] = move.castle[BLACK]
+		game.halfmove = move.halfmove
+		game.fullmove = move.fullmove
 	} else {
 		game.board.ep = 0
 		game.board.castle[WHITE] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
 		game.board.castle[BLACK] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
+		game.halfmove = 0
+		game.fullmove = 1
 	}
 	game.turn = oppColor[game.turn]
 }

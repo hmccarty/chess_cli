@@ -5,6 +5,8 @@ type Move struct {
 	castle [2]uint8
 	ep uint64
 	points int8
+	fullmove uint8
+	halfmove uint8
 	from uint64
 	fromBoard Piece
 	fromColor Color
