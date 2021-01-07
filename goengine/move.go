@@ -2,8 +2,7 @@ package goengine
 
 type Move struct {
 	flag Flag
-	kingCastle [2]bool
-	queenCastle [2]bool
+	castle [2]uint8
 	ep uint64
 	points int8
 	from uint64
@@ -17,10 +16,8 @@ type Move struct {
 func (move *Move) copy() *Move {
 	var new *Move = new(Move)
 	new.flag = move.flag
-	new.kingCastle[WHITE] = move.kingCastle[WHITE]
-	new.kingCastle[BLACK] = move.kingCastle[BLACK]
-	new.queenCastle[WHITE] = move.queenCastle[WHITE]
-	new.queenCastle[BLACK] = move.queenCastle[BLACK]
+	new.castle[WHITE] = move.castle[WHITE]
+	new.castle[BLACK] = move.castle[BLACK]
 	new.ep = move.ep
 	new.points = move.points
 	new.from = move.from

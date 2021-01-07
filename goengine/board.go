@@ -8,10 +8,9 @@ import (
 type Board struct {
 	piece [7]uint64
 	color [2]uint64
+	castle [2]uint8
 	ep uint64
 	rayAttacks [64][8]uint64
-	kingCastle [2]bool
-	queenCastle [2]bool
 }
 
 func (board *Board) setup() {
@@ -99,10 +98,8 @@ func (board *Board) setup() {
 		}
 	}
 
-	board.kingCastle[WHITE] = true
-	board.kingCastle[BLACK] = true
-	board.queenCastle[WHITE] = true
-	board.queenCastle[BLACK] = true
+	board.castle[WHITE] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
+	board.castle[BLACK] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
 }
 
 func (board *Board) processMove(move *Move) error {
@@ -175,15 +172,13 @@ func (board *Board) processMove(move *Move) error {
 		move.points = pieceToPoints[move.toBoard]
 	}
 
-	// TODO: Replace with branchless implementation
 	if (move.fromBoard == KING) {
-		move.kingCastle[move.fromColor] = board.kingCastle[move.fromColor]
-		move.queenCastle[move.fromColor] = board.queenCastle[move.fromColor]
+		move.castle[move.fromColor] &= ^(KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
 	} else if (move.fromBoard == ROOK) {
 		if ((move.from & A_FILE_CORNERS) != 0) {
-			move.queenCastle[move.fromColor] = board.queenCastle[move.fromColor]
+			move.castle[move.fromColor] &= (^QUEEN_CASTLE_MASK)
 		} else if ((move.from & H_FILE_CORNERS) != 0) {
-			move.kingCastle[move.fromColor] = board.kingCastle[move.fromColor]
+			move.castle[move.fromColor] &= (^KING_CASTLE_MASK)
 		}
 	}
 
@@ -244,16 +239,6 @@ func (board *Board) castleQueenSide(move *Move) {
 	}
 
 	board.piece[EMPTY] = board.findEmptySpaces()
-}
-
-func (board *Board) updateCastleRights(move *Move) {
-	if (move.kingCastle[move.fromColor]) {
-		board.kingCastle[move.fromColor] = !board.kingCastle[move.fromColor]
-	}
-
-	if (move.queenCastle[move.fromColor]) {
-		board.queenCastle[move.fromColor] = !board.queenCastle[move.fromColor]
-	}
 }
 
 func (board *Board) findEmptySpaces() uint64 {
@@ -432,11 +417,11 @@ func (board *Board) isKingInCheck(color Color) bool {
 }
 
 func (board *Board) canCastleKingSide(color Color) bool {
-	if !board.kingCastle[color] {
+	if (board.castle[color] & KING_CASTLE_MASK) == KING_CASTLE_MASK {
 		return false
 	}
 
-	var castleMask uint64 = KING_CASTLE_MASK
+	var castleMask uint64 = uint64(KING_CASTLE_MASK)
 	if (color == BLACK) {
 		castleMask = castleMask << 56
 	}
@@ -452,11 +437,11 @@ func (board *Board) canCastleKingSide(color Color) bool {
 }
 
 func (board *Board) canCastleQueenSide(color Color) bool {
-	if (!board.queenCastle[color]) {
+	if (board.castle[color] & QUEEN_CASTLE_MASK) == QUEEN_CASTLE_MASK {
 		return false
 	}
 
-	var castleMask uint64 = QUEEN_CASTLE_MASK
+	var castleMask uint64 = uint64(QUEEN_CASTLE_MASK)
 	if (color == BLACK) {
 		castleMask = castleMask << 56
 	}
@@ -573,6 +558,14 @@ var pieceToPoints = map[Piece]int8 {
 	EMPTY  : 0,
 }
 
+var runeToPiece = map[rune]Piece {
+	'K' : KING,
+	'Q' : QUEEN,
+	'R' : ROOK,
+	'B' : BISHOP,
+	'N' : KNIGHT,
+}
+
 var pieceToString = [2][7]string{{"K", "Q", "R", "B", "N", "P", "X"},
 								 {"k", "q", "r", "b", "n", "p", "X"},}
 
@@ -597,8 +590,8 @@ const H_FILE_CORNERS = 0x0100000000000001
 
 const EIGTH_RANK = 0xFF000000000000FF
 
-const KING_CASTLE_MASK = 0x06
-const QUEEN_CASTLE_MASK = 0x30
+const WHITE_MASK uint8 = 0x10
+const BLACK_MASK uint8 = 0x20
 
-const WHITE_MASK = 0x10
-const BLACK_MASK = 0x20
+const KING_CASTLE_MASK uint8 = 0x06
+const QUEEN_CASTLE_MASK uint8 = 0x30

@@ -65,20 +65,12 @@ func (engine *DefaultEngine) run(wg *sync.WaitGroup) {
 		gameMsg.msgType = "gameState"
 		gameMsg.currMove = cmd
 
-		from, to := engine.game.ProcessCommand(cmd)
-		move, err := engine.game.CreateMove(from, to)
+		err := engine.game.PushSAN(cmd)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		err = engine.game.CheckMove(move)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-
-		engine.game.MakeMove(move)
 		printBoard(engine.game.GetFENString())
 		var gameStatus goengine.GameStatus = engine.game.GetGameStatus()
 		switch (gameStatus) {

@@ -2,7 +2,7 @@ package goengine
 
 import (
 	"bufio"
-	"fmt"
+	//"fmt"
 	"regexp"
 	"os"
 	"io"
@@ -59,23 +59,7 @@ func ScanGames(fileName string, numGames int) []Game {
 
 		// Add each move into create Game struct
 		for _, cmd := range moves {
-			from, to := game.ProcessCommand(cmd)
-			move, err := game.CreateMove(from, to)
-			if err != nil {
-				fmt.Println(err)
-				return nil
-			}
-			err = game.CheckMove(move)
-			if err != nil {
-				fmt.Println(err)
-				return nil
-			}
-			game.MakeMove(move)
-
-			if err != nil {
-				fmt.Println(err)
-				break
-			}
+			game.PushSAN(cmd)
 		}
 
 		games = append(games, game)
