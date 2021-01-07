@@ -68,6 +68,9 @@ func (board *Board) setup() {
 	// Enable castling on king and queen's side
 	board.castle[WHITE] = (K_CASTLE_MASK | Q_CASTLE_MASK)
 	board.castle[BLACK] = (K_CASTLE_MASK | Q_CASTLE_MASK)
+
+	// Initialize array to track piece rays
+	initRayAttacks()
 }
 
 func (board *Board) processMove(move *Move) error {

@@ -118,14 +118,14 @@ func (game *Game) PushSAN(cmd string) error {
 	}
 
 	// Search all possible pieces
-	var pieces uint64 = game.board.piece[move.piece]
-	pieces &= game.board.color[game.turn]
+	var pieceBB uint64 = game.board.piece[move.piece]
+	pieceBB &= game.board.color[game.turn]
 
-	for pieces > 0 {
-		var sqr uint8 = bitScanForward(pieces)
-		var piece uint64 = 1 << sqr
-		move.from = piece
-		var set uint64 = game.board.getPieceSet(move.piece, piece, game.turn)
+	for pieceBB > 0 {
+		var sqr uint8 = bitScanForward(pieceBB)
+		var bb uint64 = 1 << sqr
+		move.from = bb
+		var set uint64 = game.board.getPieceSet(move.piece, bb, game.turn)
 		if (set & move.to) != 0 {
 			var valid bool = true
 			for i := 0; i < len(additionalInfo); i++ {
@@ -155,7 +155,7 @@ func (game *Game) PushSAN(cmd string) error {
 			}
 		}
 
-		pieces ^= piece
+		pieceBB ^= bb
 	}
 
 	return errors.New("Couldn't find piece to carry out move.")

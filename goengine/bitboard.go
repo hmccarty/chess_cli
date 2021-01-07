@@ -102,15 +102,15 @@ func getTransSet(piece uint64, occup uint64) uint64 {
 	return set
 }
 
-func getDiagSet(piece uint64, occup uint64) uint64 {
+func getDiagSet(bb uint64, occup uint64) uint64 {
 	var set uint64 = 0
-	for piece != 0 {
-		var sqr uint8 = bitScanForward(piece)
+	for bb != 0 {
+		var sqr uint8 = bitScanForward(bb)
 		set |= getPosRayAttacks(sqr, occup, N_EAST)
 		set |= getPosRayAttacks(sqr, occup, N_WEST)
 		set |= getNegRayAttacks(sqr, occup, S_EAST)
 		set |= getNegRayAttacks(sqr, occup, S_WEST)
-		piece ^= (1 << sqr)
+		bb ^= (1 << sqr)
 	}
 	return set
 }
