@@ -186,11 +186,18 @@ func (game *Game) UndoMove() {
 
 	// Popping last move from stack
 	game.moves = game.moves[:len(game.moves) - 1]
+
 	// Setting relevant game variables to new, last move
-	move = game.moves[len(game.moves) - 1]
-	game.board.ep = move.ep
-	game.board.castle[WHITE] = move.castle[WHITE]
-	game.board.castle[BLACK] = move.castle[BLACK]
+	if len(game.moves) > 0 {
+		move = game.moves[len(game.moves) - 1]
+		game.board.ep = move.ep
+		game.board.castle[WHITE] = move.castle[WHITE]
+		game.board.castle[BLACK] = move.castle[BLACK]
+	} else {
+		game.board.ep = 0
+		game.board.castle[WHITE] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
+		game.board.castle[BLACK] = (KING_CASTLE_MASK | QUEEN_CASTLE_MASK)
+	}
 	game.turn = oppColor[game.turn]
 }
 
@@ -223,16 +230,22 @@ func (game *Game) getPieceMoves(pieces uint64, color Color,
 								getSet GetSet) []*Move {
 	var list []*Move 
 	for pieces != 0 {
+		// Get first piece set
 		var piece uint64 = 1 << bitScanForward(pieces)
 		var moves uint64 = getSet(piece, color)
+
+		// Loop for every possible move in set
 		for moves != 0 {
 			var move *Move = new(Move)
 			move.from = piece
 			move.to = 1 << bitScanForward(moves)
 			err := game.HandleMove(move)
 			if err == nil {
+				// If promotion, handle all possible promotions
+				// Else undo handled move and append to list
 				if move.flag == PROMOTION {
-					potentialPromos := [4]Piece{QUEEN, ROOK, BISHOP, KNIGHT}
+					game.UndoMove()
+					potentialPromos := [3]Piece{ROOK, BISHOP, KNIGHT}
 					for _, promo := range potentialPromos {
 						move.toBoard = promo
 						err = game.HandleMove(move)
@@ -242,11 +255,8 @@ func (game *Game) getPieceMoves(pieces uint64, color Color,
 						}
 					}
 				} else {
-					err = game.HandleMove(move)
-					if err == nil {
-						game.UndoMove()
-						list = append(list, move)
-					}
+					game.UndoMove()
+					list = append(list, move)
 				}
 			}
 			moves ^= move.to
