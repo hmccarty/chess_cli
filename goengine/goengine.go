@@ -43,7 +43,7 @@ func (engine *GoEngine) Run(wg *sync.WaitGroup) {
 			}
 		} else {
 			engine.outputChan <- "engine " + engine.game.getFENString()
-			_, move := minimax(engine.game, 8, true, MIN_INT, MAX_INT)
+			_, move := minimax(engine.game, 5, true, MIN_INT, MAX_INT)
 			engine.game.makeMove(move)
 		}
 

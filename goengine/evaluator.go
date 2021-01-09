@@ -1,10 +1,5 @@
 package goengine
 
-import (
-	"fmt"
-	"github.com/fatih/color"
-)
-
 const MAX_INT = int(^uint(0) >> 1)
 const MIN_INT = -MAX_INT - 1
 
