@@ -28,8 +28,9 @@ of this package is tracked here:
 - ~~Create board representation (bitboard)~~
 - ~~Add basic, legal move generation~~
 - ~~Add endgame detection~~
-- Add support for ~~castling~~, ~~promotions~~ and EP
-- Allow for PGN metadata and ~~move parsing~~
+- ~~Add support for castling, promotions and EP~~
+- ~~Allow for PGN metadata and move parsing~~
+- ~~Add minimax search function with alpha-beta pruning~~
 - Refactor sliding-piece move generation
 - Improve documentation
 - Add engine test cases
