@@ -17,7 +17,7 @@ const (
 	BLACK
 )
 
-var pieceToPoints = map[Piece]int8 {
+var pieceToPoints = map[Piece]int {
 	KING   : 0,
 	QUEEN  : 9,
 	ROOK   : 5,

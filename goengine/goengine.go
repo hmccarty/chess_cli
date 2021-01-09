@@ -32,13 +32,19 @@ func (engine *GoEngine) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {
-		engine.outputChan <- engine.game.getFENString()
-		cmd := <- engine.inputChan
+		if engine.game.turn == WHITE {
+			engine.outputChan <- "client " + engine.game.getFENString()
+			cmd := <- engine.inputChan
 
-		err := engine.game.pushSAN(cmd)
-		if err != nil {
-			fmt.Println(err)
-			continue
+			err := engine.game.pushSAN(cmd)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+		} else {
+			engine.outputChan <- "engine " + engine.game.getFENString()
+			_, move := minimax(engine.game, 8, true, MIN_INT, MAX_INT)
+			engine.game.makeMove(move)
 		}
 
 		var gameStatus GameStatus = engine.game.getGameStatus()

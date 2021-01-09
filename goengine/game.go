@@ -14,7 +14,7 @@ type Game struct {
 	turn Color
 	halfmove uint8
 	fullmove uint8
-	points [2]int8
+	points [2]int
 	status GameStatus
 }
 
@@ -216,7 +216,14 @@ func (game *Game) makeMove(move *Move) {
 }
 
 func (game *Game) undoMove() {
+	// Popping last move from stack
 	var move *Move = game.moves[len(game.moves) - 1]
+	game.moves = game.moves[:len(game.moves) - 1]
+
+	var prevMove *Move = nil
+	if len(game.moves) > 0 {
+		prevMove = game.moves[len(game.moves) - 1]
+	}
 
 	// Applying same board data to reverse last move
 	switch move.flag {
@@ -234,11 +241,9 @@ func (game *Game) undoMove() {
 		}
 		game.board.quietMove(move)
 	case EP_CAPTURE:
+		game.board.ep = prevMove.ep
 		game.board.epCapture(move)
 	}
-
-	// Popping last move from stack
-	game.moves = game.moves[:len(game.moves) - 1]
 
 	// Setting relevant game variables to new, last move
 	if len(game.moves) > 0 {
@@ -277,6 +282,8 @@ func (game *Game) getPieceMoves(piece Piece, color Color) []*Move {
 		// Loop for every possible move in set
 		for set != 0 {
 			var move *Move = new(Move)
+			move.piece = piece
+			move.color = color
 			move.from = bb
 			move.to = 1 << bitScanForward(set)
 			err := game.handleMove(move)
@@ -308,8 +315,7 @@ func (game *Game) getPieceMoves(piece Piece, color Color) []*Move {
 }
 
 func (game *Game) getGameStatus() GameStatus {
-	return game.status
-	var moves []*Move = game.GetValidMoves()
+	var moves []*Move = game.getValidMoves()
 
 	// If no legal moves, checkmate
 	if (len(moves) == 0) {

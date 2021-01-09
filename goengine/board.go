@@ -74,8 +74,6 @@ func (board *Board) setup() {
 }
 
 func (board *Board) processMove(move *Move) error {
-	move.piece = board.findPiece(move.from)
-	move.color = board.findColor(move.from)
 	move.target = board.findPiece(move.to)
 
 	if (move.piece == EMPTY) {

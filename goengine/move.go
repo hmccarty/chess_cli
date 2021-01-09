@@ -11,7 +11,7 @@ type Move struct {
 	ep uint64
 	fullmove uint8
 	halfmove uint8
-	points int8
+	points int
 }
 
 func (move *Move) copy() *Move {

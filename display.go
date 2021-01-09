@@ -42,7 +42,7 @@ func printBoard(fen string) {
 		}
 		color.Unset()
 	}
-	fmt.Println("\n   A  B  C  D  E  F  G  H ")
+	fmt.Println("\n   A  B  C  D  E  F  G  H \n")
 }
 
 func printMoveList(moves []*goengine.Move) {

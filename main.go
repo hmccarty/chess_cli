@@ -37,17 +37,18 @@ func handleGame(inputChan chan string, outputChan chan string,
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
-		update := <-inputChan
+		update := strings.Split(<-inputChan, " ")
 
-		switch update {
+		switch update[0] {
 			case "aborted", "resign", "timeout", "mate", "nostart":
 				return
-			default:
-				printBoard(update)
+			case "engine":
+				printBoard(update[1])
+			case "client":
+				printBoard(update[1])
+				fmt.Print("Action (move, resign or draw): ")
+				response, _ := reader.ReadString('\n')
+				outputChan <- strings.TrimSpace(response)
 		}
-
-		fmt.Print("Action (move, resign or draw): ")
-		response, _ := reader.ReadString('\n')
-		outputChan <- strings.TrimSpace(response)
 	}
 }
