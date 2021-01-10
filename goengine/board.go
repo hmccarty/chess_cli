@@ -115,7 +115,8 @@ func (board *Board) processMove(move *Move) error {
 			return errors.New("Invalid pawn move.")
 		} else if (move.to & EIGTH_RANK) != 0 {
 			move.flag = PROMOTION
-		} else if (move.to & board.ep) != 0 {
+		} else if ((move.to & board.ep) != 0) &&
+				  ((move.to & board.piece[PAWN]) == 0) {
 			move.flag = EP_CAPTURE
 			move.points = pieceToPoints[PAWN]
 		} else {
@@ -142,10 +143,20 @@ func (board *Board) processMove(move *Move) error {
 		} else {
 			move.flag = QUIET
 		}
+	} else if move.flag == K_CASTLE {
+		if !board.canCastleKingSide(move.color) {
+			return errors.New("Cannot castle king side.")
+		}
+	} else if move.flag == Q_CASTLE {
+		if !board.canCastleQueenSide(move.color) {
+			return errors.New("Cannot castle queen side.")
+		}
 	}
 
+	move.castle[WHITE] = board.castle[WHITE]
+	move.castle[BLACK] = board.castle[BLACK]
 	if (move.piece == KING) {
-		move.castle[move.color] &= ^(K_CASTLE_MASK | Q_CASTLE_MASK)
+		move.castle[move.color] = 0
 	} else if (move.piece == ROOK) {
 		if ((move.from & A_FILE_CORNERS) != 0) {
 			move.castle[move.color] &= (^Q_CASTLE_MASK)
@@ -233,8 +244,81 @@ func (board *Board) findColor(bb uint64) Color {
 	}
 }
 
+func (board *Board) clear() {
+	board.piece[KING] = 0
+	board.piece[QUEEN] = 0
+	board.piece[ROOK] = 0
+	board.piece[BISHOP] = 0
+	board.piece[KNIGHT] = 0
+	board.piece[PAWN] = 0
+	board.color[WHITE] = 0
+	board.color[BLACK] = 0
+}
+
 func (board *Board) setFENBoard(fen string) {
-	
+	board.clear()
+
+	i := 63
+	for len(fen) > 0 {
+		piece := fen[0]
+		fen = fen[1:]
+		switch piece {
+		case 'K':
+			board.piece[KING] |= 1 << i
+			board.color[WHITE] |= 1 << i
+			i -= 1
+		case 'k':
+			board.piece[KING] |= 1 << i
+			board.color[BLACK] |= 1 << i
+			i -= 1
+		case 'Q':
+			board.piece[QUEEN] |= 1 << i
+			board.color[WHITE] |= 1 << i
+			i -= 1
+		case 'q':
+			board.piece[QUEEN] |= 1 << i
+			board.color[BLACK] |= 1 << i
+			i -= 1
+		case 'R':
+			board.piece[ROOK] |= 1 << i
+			board.color[WHITE] |= 1 << i
+			i -= 1
+		case 'r':
+			board.piece[ROOK] |= 1 << i
+			board.color[BLACK] |= 1 << i
+			i -= 1
+		case 'B':
+			board.piece[BISHOP] |= 1 << i
+			board.color[WHITE] |= 1 << i
+			i -= 1
+		case 'b':
+			board.piece[BISHOP] |= 1 << i
+			board.color[BLACK] |= 1 << i
+			i -= 1
+		case 'N':
+			board.piece[KNIGHT] |= 1 << i
+			board.color[WHITE] |= 1 << i
+			i -= 1
+		case 'n':
+			board.piece[KNIGHT] |= 1 << i
+			board.color[BLACK] |= 1 << i
+			i -= 1
+		case 'P':
+			board.piece[PAWN] |= 1 << i
+			board.color[WHITE] |= 1 << i
+			i -= 1
+		case 'p':
+			board.piece[PAWN] |= 1 << i
+			board.color[BLACK] |= 1 << i
+			i -= 1
+		default:
+			if (piece >= byte('1')) && (piece <= byte('8')) {
+				i -= (int(piece) - (ASCII_ROW_OFFSET - 1))
+			}
+		}
+	}
+
+	board.piece[EMPTY] = board.findEmptySpaces()
 }
 
 func (board *Board) getFENBoard() string {
@@ -299,12 +383,12 @@ func (board *Board) isKingInCheck(color Color) bool {
 }
 
 func (board *Board) canCastleKingSide(color Color) bool {
-	if (board.castle[color] & K_CASTLE_MASK) == K_CASTLE_MASK {
+	if (board.castle[color] & K_CASTLE_MASK) != K_CASTLE_MASK {
 		return false
 	}
 
 	var castle uint64 = uint64(K_CASTLE_MASK) << (56 * color)
-	if ((board.piece[EMPTY] & castle) != castle) {
+	if (board.piece[EMPTY] & castle) != castle {
 		return false
 	} else if (board.isSqrUnderAttack(bitScanForward(castle), color) ||
 			   board.isSqrUnderAttack(bitScanReverse(castle), color)) {
@@ -315,7 +399,7 @@ func (board *Board) canCastleKingSide(color Color) bool {
 }
 
 func (board *Board) canCastleQueenSide(color Color) bool {
-	if (board.castle[color] & Q_CASTLE_MASK) == Q_CASTLE_MASK {
+	if (board.castle[color] & Q_CASTLE_MASK) != Q_CASTLE_MASK {
 		return false
 	}
 

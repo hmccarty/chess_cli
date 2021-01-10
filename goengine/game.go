@@ -2,14 +2,18 @@ package goengine
 
 import (
 	"fmt"
-	//"strings"
+	"strings"
+	"strconv"
 	"errors"
 )
+
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 const ASCII_ROW_OFFSET = 49
 const ASCII_COL_OFFSET = 96
 
 type Game struct {
+	initFEN string
 	board *Board
 	moves []*Move
 	turn Color
@@ -28,6 +32,7 @@ const (
 )
 
 func (game *Game) setup() {
+	game.initFEN = START_FEN
 	game.board = new(Board)
 	game.board.setup()
 	game.fullmove = 1
@@ -70,8 +75,81 @@ func (game *Game) getFENString() string {
 	return fen
 }
 
-func (game *Game) setFENString(fen string) {
-	
+func (game *Game) setFENString(fen string) error {
+	game.initFEN = fen
+	game.moves = game.moves[:0]
+
+	var fenData []string = strings.Split(fen, " ")
+
+	// Set board position
+	game.board.setFENBoard(fenData[0])
+
+	// Set turn
+	if fenData[1] == "w" {
+		game.turn = WHITE
+	} else if fenData[1] == "b" {
+		game.turn = BLACK
+	} else {
+		errors.New("Invalid game turn data in FEN string.")
+	}
+
+	// Set castling rules
+	game.board.castle[WHITE] = 0
+	game.board.castle[BLACK] = 0
+	for _, value := range fenData[2] {
+		switch value {
+		case 'K':
+			game.board.castle[WHITE] |= K_CASTLE_MASK
+		case 'Q':
+			game.board.castle[WHITE] |= Q_CASTLE_MASK
+		case 'k':
+			game.board.castle[BLACK] |= K_CASTLE_MASK
+		case 'q':
+			game.board.castle[BLACK] |= Q_CASTLE_MASK
+		case '-':
+			break
+		default:
+			return errors.New("Invalid castling data in FEN string.")
+		}
+	}
+
+	// Set ep square
+	if len(fenData[3]) == 2 {
+		col := 8 - (fenData[3][0] - ASCII_COL_OFFSET)
+		row := fenData[3][1] - ASCII_ROW_OFFSET
+		game.board.ep = 1 << uint64((row * 8) + col)
+		if game.turn == WHITE {
+			game.board.ep |= moveSouth(game.board.ep)
+		} else {
+			game.board.ep |= moveNorth(game.board.ep)
+		}
+	} else if fenData[3] != "-" {
+		return errors.New("Invalid En Passant data in FEN string.")
+	} else {
+		game.board.ep = 0
+	}
+
+	// If clock data is included
+	if len(fenData) > 4 {
+		// Set half move
+		data, err := strconv.ParseInt(fenData[4], 10, 8)
+		if err != nil {
+			return errors.New("Invalid half move data in FEN string.")
+		}
+		game.halfmove = uint8(data)
+
+		// Set full move
+		data, err = strconv.ParseInt(fenData[5], 10, 8)
+		if err != nil {
+			return errors.New("Invalid full move data in FEN string.")
+		}
+		game.fullmove = uint8(data)
+	} else {
+		game.halfmove = 0
+		game.fullmove = 0
+	}
+
+	return nil
 }
 
 func (game *Game) pushSAN(cmd string) error {
@@ -262,14 +340,10 @@ func (game *Game) undoMove() {
 		game.board.castle[BLACK] = move.castle[BLACK]
 		game.halfmove = move.halfmove
 		game.fullmove = move.fullmove
+		game.turn = oppColor[game.turn]
 	} else {
-		game.board.ep = 0
-		game.board.castle[WHITE] = (K_CASTLE_MASK | Q_CASTLE_MASK)
-		game.board.castle[BLACK] = (K_CASTLE_MASK | Q_CASTLE_MASK)
-		game.halfmove = 0
-		game.fullmove = 1
+		game.setFENString(game.initFEN)
 	}
-	game.turn = oppColor[game.turn]
 }
 
 func (game *Game) getValidMoves() []*Move {

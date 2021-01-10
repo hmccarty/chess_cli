@@ -31,8 +31,12 @@ func (engine *GoEngine) PGNToFEN(fileName string, numGames int) []string {
 func (engine *GoEngine) Run(wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	engine.game.setFENString("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -")
+
 	for {
-		if engine.game.turn == WHITE {
+		//if engine.game.turn == WHITE {
+			fmt.Println(dividePerft(engine.game, 6))
+			fmt.Println(engine.game.getFENString())
 			engine.outputChan <- "client " + engine.game.getFENString()
 			cmd := <- engine.inputChan
 
@@ -41,11 +45,11 @@ func (engine *GoEngine) Run(wg *sync.WaitGroup) {
 				fmt.Println(err)
 				continue
 			}
-		} else {
-			engine.outputChan <- "engine " + engine.game.getFENString()
-			_, move := minimax(engine.game, 5, true, MIN_INT, MAX_INT)
-			engine.game.makeMove(move)
-		}
+		//} else {
+			// engine.outputChan <- "engine " + engine.game.getFENString()
+			// _, move := minimax(engine.game, 5, true, MIN_INT, MAX_INT)
+			// engine.game.makeMove(move)
+		//}
 
 		var gameStatus GameStatus = engine.game.getGameStatus()
 		switch (gameStatus) {

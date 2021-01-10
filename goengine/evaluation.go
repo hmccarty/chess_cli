@@ -1,5 +1,7 @@
 package goengine
 
+import "fmt"
+
 const MAX_INT = int(^uint(0) >> 1)
 const MIN_INT = -MAX_INT - 1
 
@@ -63,4 +65,43 @@ func minimax(game *Game, depth int, max bool,
 		}
 		return best, bestMove
 	}
+}
+
+func dividePerft(game *Game, depth int) int {
+	if depth == 0 {
+		return 1
+	}
+
+	var total int = 0
+	var moves []*Move = game.getValidMoves()
+
+	for _, move := range moves {
+		game.makeMove(move)
+		num := perft(game, depth - 1)
+		fmt.Printf("%s: %d\n", move.ToString(), num)
+		if move.ToString() == "a8a8" {
+			fmt.Println(move.flag)
+		}
+		total += num
+		game.undoMove()
+	}
+
+	return total
+}
+
+func perft(game *Game, depth int) int {
+	if depth == 0 {
+		return 1
+	}
+
+	var num int = 0
+	var moves []*Move = game.getValidMoves()
+
+	for _, move := range moves {
+		game.makeMove(move)
+		num += perft(game, depth - 1)
+		game.undoMove()
+	}
+
+	return num
 }
