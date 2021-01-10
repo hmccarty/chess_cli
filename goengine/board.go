@@ -82,11 +82,10 @@ func (board *Board) processMove(move *Move) error {
 		move.target = move.piece
 	}
 
-	move.flag = QUIET
-
 	switch move.piece {
 	case KING:
-		if ((move.to & board.getKingSet(move.from, move.color)) == 0) {
+		if ((move.flag != K_CASTLE) && (move.flag != Q_CASTLE)) &&
+		   ((move.to & board.getKingSet(move.from, move.color)) == 0) {
 			if (move.to & (board.piece[KING] >> 2) != 0) {
 				move.flag = K_CASTLE
 			} else if (move.to & (board.piece[KING] << 2) != 0) {
@@ -135,10 +134,14 @@ func (board *Board) processMove(move *Move) error {
 		return errors.New("Piece doesn't exist at square.")
 	}
 
-	if (move.to & board.piece[EMPTY]) == 0 {
-		move.flag = CAPTURE
-		move.points = pieceToPoints[move.target]
-		move.halfmove = 0
+	if move.flag == UNKNOWN {
+		if (move.to & board.piece[EMPTY]) == 0 {
+			move.flag = CAPTURE
+			move.points = pieceToPoints[move.target]
+			move.halfmove = 0
+		} else {
+			move.flag = QUIET
+		}
 	}
 
 	if (move.piece == KING) {
@@ -230,8 +233,8 @@ func (board *Board) findColor(bb uint64) Color {
 	}
 }
 
-func (board *Board) setFENString(fen string) {
-	// TODO
+func (board *Board) setFENBoard(fen string) {
+	
 }
 
 func (board *Board) getFENBoard() string {

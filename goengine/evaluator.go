@@ -15,6 +15,7 @@ func minimax(game *Game, depth int, max bool,
 	if max {
 		best = MIN_INT
 		var moves []*Move = game.getValidMoves()
+
 		for _, move := range moves {
 			game.makeMove(move)
 			var value int
@@ -39,6 +40,7 @@ func minimax(game *Game, depth int, max bool,
 	} else {
 		best = MAX_INT
 		var moves []*Move = game.getValidMoves()
+
 		for _, move := range moves {
 			game.makeMove(move)
 			var value int

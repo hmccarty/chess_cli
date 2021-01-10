@@ -18,7 +18,7 @@ const (
 )
 
 var pieceToPoints = map[Piece]int {
-	KING   : 0,
+	KING   : MAX_INT,
 	QUEEN  : 9,
 	ROOK   : 5,
 	BISHOP : 3,

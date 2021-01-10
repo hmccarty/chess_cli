@@ -2,6 +2,7 @@ package goengine
 
 import (
 	"fmt"
+	//"strings"
 	"errors"
 )
 
@@ -69,13 +70,19 @@ func (game *Game) getFENString() string {
 	return fen
 }
 
+func (game *Game) setFENString(fen string) {
+	
+}
+
 func (game *Game) pushSAN(cmd string) error {
 	var move *Move = new(Move)
 
 	if cmd == "O-O" {
 		move.flag = K_CASTLE
-		move.from = game.board.piece[KING] & game.board.color[game.turn]
-		move.to = move.from >> 2
+		move.piece = KING
+		move.color = game.turn
+		// move.from = game.board.piece[KING] & game.board.color[game.turn]
+		// move.to = move.from >> 2
 		err := game.handleMove(move)
 		if err != nil {
 			return err
@@ -83,8 +90,10 @@ func (game *Game) pushSAN(cmd string) error {
 		return nil
 	} else if cmd == "O-O-O" {
 		move.flag = Q_CASTLE
-		move.from = game.board.piece[KING] & game.board.color[game.turn]
-		move.to = move.from << 2
+		move.piece = KING
+		move.color = game.turn
+		// move.from = game.board.piece[KING] & game.board.color[game.turn]
+		// move.to = move.from << 2
 		err := game.handleMove(move)
 		if err != nil {
 			return err
@@ -267,6 +276,22 @@ func (game *Game) getValidMoves() []*Move {
 	var moves []*Move
 	for i := 0; i < 6; i++ {
 		moves = append(moves, game.getPieceMoves(Piece(i), game.turn)...)
+	}
+
+	if game.board.canCastleKingSide(game.turn) {
+		var move *Move = new(Move)
+		move.flag = K_CASTLE
+		move.piece = KING
+		move.color = game.turn
+		moves = append(moves, move)
+	}
+
+	if game.board.canCastleQueenSide(game.turn) {
+		var move *Move = new(Move)
+		move.flag = Q_CASTLE
+		move.piece = KING
+		move.color = game.turn
+		moves = append(moves, move)
 	}
 	return moves
 }
