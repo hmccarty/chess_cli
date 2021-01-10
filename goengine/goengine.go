@@ -50,7 +50,6 @@ func (engine *GoEngine) Run(wg *sync.WaitGroup) {
 			// _, move := minimax(engine.game, 5, true, MIN_INT, MAX_INT)
 			// engine.game.makeMove(move)
 		//}
-
 		var gameStatus GameStatus = engine.game.getGameStatus()
 		switch (gameStatus) {
 		case WHITE_WON:

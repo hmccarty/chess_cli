@@ -112,6 +112,7 @@ func (board *Board) processMove(move *Move) error {
 		}
 	case PAWN:
 		if ((move.to & board.getPawnSet(move.from, move.color)) == 0) {
+			fmt.Println(move.color)
 			return errors.New("Invalid pawn move.")
 		} else if (move.to & EIGTH_RANK) != 0 {
 			move.flag = PROMOTION

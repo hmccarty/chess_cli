@@ -146,7 +146,7 @@ func (game *Game) setFENString(fen string) error {
 		game.fullmove = uint8(data)
 	} else {
 		game.halfmove = 0
-		game.fullmove = 0
+		game.fullmove = 1
 	}
 
 	return nil
@@ -154,13 +154,11 @@ func (game *Game) setFENString(fen string) error {
 
 func (game *Game) pushSAN(cmd string) error {
 	var move *Move = new(Move)
+	move.color = game.turn
 
 	if cmd == "O-O" {
 		move.flag = K_CASTLE
 		move.piece = KING
-		move.color = game.turn
-		// move.from = game.board.piece[KING] & game.board.color[game.turn]
-		// move.to = move.from >> 2
 		err := game.handleMove(move)
 		if err != nil {
 			return err
@@ -169,9 +167,6 @@ func (game *Game) pushSAN(cmd string) error {
 	} else if cmd == "O-O-O" {
 		move.flag = Q_CASTLE
 		move.piece = KING
-		move.color = game.turn
-		// move.from = game.board.piece[KING] & game.board.color[game.turn]
-		// move.to = move.from << 2
 		err := game.handleMove(move)
 		if err != nil {
 			return err
@@ -389,8 +384,9 @@ func (game *Game) getPieceMoves(piece Piece, color Color) []*Move {
 			if err == nil {
 				// If promotion, handle all possible promotions
 				// Else undo handled move and append to list
+				game.undoMove()
+				list = append(list, move)
 				if move.flag == PROMOTION {
-					game.undoMove()
 					potentialPromos := [3]Piece{ROOK, BISHOP, KNIGHT}
 					for _, promo := range potentialPromos {
 						move.target = promo
@@ -400,9 +396,6 @@ func (game *Game) getPieceMoves(piece Piece, color Color) []*Move {
 							list = append(list, move)
 						}
 					}
-				} else {
-					game.undoMove()
-					list = append(list, move)
 				}
 			}
 			set ^= move.to
