@@ -34,5 +34,3 @@ of this package is tracked here:
 - Refactor sliding-piece move generation
 - Improve documentation
 - Add engine test cases
-- Supervised training support for position evaluation
-- RL training support for position evaluation
