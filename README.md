@@ -8,7 +8,7 @@ GoChess, as the name might suggest, is a chess CLI written entirely in Golang. I
 
 ## Motivations
 I wanted a quick CLI to play chess while waiting for build servers at work. For a long time, I had a script that used the Lichess api and that worked
-moderately enough. Eventually however, I wanted to explore Deep RL networks, so I revamped this project to include a fully fledged engine.
+moderately enough. Eventually however, I wanted to explore local move generation, so I revamped this project to include a fully fledged engine.
 
 ## Current Status
 ```
